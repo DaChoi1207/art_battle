@@ -1,8 +1,43 @@
-# Virtual Environment
+# Python virtual environments
 .venv/
 venv/
 env/
 ENV/
 
-# env
+# Python
+__pycache__/
+*.py[cod]
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.sqlite3
+*.db
+*.log
+
+# Environment variables
 .env
+
+# Node/React (frontend)
+my-art-battle-app/node_modules/
+my-art-battle-app/build/
+my-art-battle-app/.env
+my-art-battle-app/npm-debug.log*
+my-art-battle-app/yarn-debug.log*
+my-art-battle-app/yarn-error.log*
+my-art-battle-app/.pnp
+my-art-battle-app/.pnp.js
+
+# Output/auto-saved images
+*.png
+drawing_save.png
+
+# VSCode/IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
