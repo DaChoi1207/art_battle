@@ -1,303 +1,187 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 
-// IMPORTANT: Hands and HAND_CONNECTIONS are loaded globally via CDN script in public/index.html
-// <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-
-// --- Gesture Detection Functions (ported from hand_detection.py) ---
-
-function is_open_palm(lm) {
-  // Thumb extended if tip (4) is RIGHT of 3 (for left hand)
-  if (!(lm[4].x > lm[3].x)) return false;
-  // Index, middle, ring, pinky: tip.y < pip.y
-  return lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y < lm[14].y && lm[20].y < lm[18].y;
-}
-
-function is_pointer(lm) {
-  // Only index up: index extended, all others folded
-  return (
-    lm[8].y < lm[6].y && // index up
-    lm[12].y > lm[10].y && // middle folded
-    lm[16].y > lm[14].y && // ring folded
-    lm[20].y > lm[18].y && // pinky folded
-    !(lm[4].x > lm[3].x) // thumb folded
-  );
-}
-
-function is_two_fingers(lm) {
-  // Index and middle up, ring/pinky/thumb folded
-  return (
-    lm[8].y < lm[6].y &&
-    lm[12].y < lm[10].y &&
-    lm[16].y > lm[14].y &&
-    lm[20].y > lm[18].y &&
-    !(lm[4].x > lm[3].x)
-  );
-}
-
-function is_three_fingers(lm) {
-  // Index, middle, ring up, pinky/thumb folded
-  return (
-    lm[8].y < lm[6].y &&
-    lm[12].y < lm[10].y &&
-    lm[16].y < lm[14].y &&
-    lm[20].y > lm[18].y &&
-    !(lm[4].x > lm[3].x)
-  );
-}
-
-function is_four_fingers(lm) {
-  // Four up, thumb folded
-  return (
-    !(lm[4].x > lm[3].x) &&
-    lm[8].y < lm[6].y &&
-    lm[12].y < lm[10].y &&
-    lm[16].y < lm[14].y &&
-    lm[20].y < lm[18].y
-  );
-}
-
-function is_yolo(lm) {
-  // Left-hand YOLO: Index, pinky, thumb up; middle and ring folded
-  return (
-    lm[8].y < lm[6].y &&
-    lm[20].y < lm[18].y &&
-    lm[4].x > lm[3].x &&
-    lm[12].y > lm[10].y &&
-    lm[16].y > lm[14].y
-  );
-}
-
-// --- Right-hand gesture detection ---
-// Mirror thumb logic is applied (notice the x comparisons are reversed)
-function is_open_palm_right(lm) {
-  if (!(lm[4].x < lm[3].x)) return false;
-  return lm[8].y < lm[6].y && lm[12].y < lm[10].y && lm[16].y < lm[14].y && lm[20].y < lm[18].y;
-}
-
-function is_pointer_right(lm) {
-  return (
-    lm[8].y < lm[6].y &&
-    lm[12].y > lm[10].y &&
-    lm[16].y > lm[14].y &&
-    lm[20].y > lm[18].y &&
-    !(lm[4].x < lm[3].x)
-  );
-}
-
-function is_two_fingers_right(lm) {
-  return (
-    lm[8].y < lm[6].y &&
-    lm[12].y < lm[10].y &&
-    lm[16].y > lm[14].y &&
-    lm[20].y > lm[18].y &&
-    !(lm[4].x < lm[3].x)
-  );
-}
-
-function is_three_fingers_right(lm) {
-  return (
-    lm[8].y < lm[6].y &&
-    lm[12].y < lm[10].y &&
-    lm[16].y < lm[14].y &&
-    lm[20].y > lm[18].y &&
-    !(lm[4].x < lm[3].x)
-  );
-}
-
-function is_four_fingers_right(lm) {
-  return (
-    !(lm[4].x < lm[3].x) &&
-    lm[8].y < lm[6].y &&
-    lm[12].y < lm[10].y &&
-    lm[16].y < lm[14].y &&
-    lm[20].y < lm[18].y
-  );
-}
-
-function is_five_fingers_right(lm) {
-  return (
-    (lm[4].x < lm[3].x) &&
-    lm[8].y < lm[6].y &&
-    lm[12].y < lm[10].y &&
-    lm[16].y < lm[14].y &&
-    lm[20].y < lm[18].y
-  );
-}
-
-// --- New YOLO function for right-hand branch ---
-// This applies to the physical left hand (detected as "Right") so that users making the YOLO sign with their left hand are recognized.
-function is_yolo_right(lm) {
-  return (
-    lm[8].y < lm[6].y &&         // index up
-    lm[20].y < lm[18].y &&       // pinky up
-    lm[4].x < lm[3].x &&         // thumb up (mirrored condition)
-    lm[12].y > lm[10].y &&       // middle folded
-    lm[16].y > lm[14].y          // ring folded
-  );
-}
-
-function WebcamFeed({ onHandLandmarks }) {
+function WebcamFeed() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  const [mediapipeError, setMediapipeError] = useState(null);
-  const [showFallback, setShowFallback] = useState(false);
-  const [fingerMsg, setFingerMsg] = useState('');
 
   useEffect(() => {
     let camera = null;
     let hands = null;
     let videoStream = null;
-    let cancelled = false;
 
     async function setup() {
-      // Use Hands and HAND_CONNECTIONS from the global window object
+      // Ensure MediaPipe's Hands API and connection constants are loaded.
       const Hands = window.Hands;
       const HAND_CONNECTIONS = window.HAND_CONNECTIONS;
       if (!Hands || !HAND_CONNECTIONS) {
-        setMediapipeError('window.Hands or window.HAND_CONNECTIONS not found. Did you add the CDN script to public/index.html?');
-        setShowFallback(true);
+        console.error(
+          'MediaPipe Hands or HAND_CONNECTIONS not found. Please include the CDN scripts in public/index.html.'
+        );
         return;
       }
+
+      // Get access to the webcam.
       try {
         videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
         if (videoRef.current) {
           videoRef.current.srcObject = videoStream;
         }
-        hands = new window.Hands({
-          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
-        });
-        hands.setOptions({
-          maxNumHands: 2,
-          modelComplexity: 1,
-          minDetectionConfidence: 0.7,
-          minTrackingConfidence: 0.7,
-        });
-        hands.onResults((results) => {
-          try {
-            const canvas = canvasRef.current;
-            if (!canvas) {
-              // Canvas is not mounted, skip drawing
-              return;
-            }
-            // Create (or reuse) an offscreen canvas for logic and drawing
-            if (!window._offscreenCanvas || window._offscreenCanvas.width !== canvas.width || window._offscreenCanvas.height !== canvas.height) {
-              window._offscreenCanvas = document.createElement('canvas');
-              window._offscreenCanvas.width = canvas.width;
-              window._offscreenCanvas.height = canvas.height;
-            }
-            const offCtx = window._offscreenCanvas.getContext('2d');
-            offCtx.save();
-            offCtx.clearRect(0, 0, canvas.width, canvas.height);
-            // Draw video frame (not mirrored)
-            offCtx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-            // Draw landmarks (not mirrored)
-            let leftGesture = '', rightGesture = '';
-            if (results.multiHandLandmarks && results.multiHandedness) {
-              for (let i = 0; i < results.multiHandLandmarks.length; ++i) {
-                const handType = results.multiHandedness[i].label; // "Left" or "Right"
-                const lm = results.multiHandLandmarks[i];
-                window.drawConnectors(offCtx, lm, window.HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
-                window.drawLandmarks(offCtx, lm, { color: '#FF0000', lineWidth: 1 });
-                // Gesture detection
-                // For the physical right hand, MediaPipe labels it "Left"
-                if (handType === "Left") {
-                  if (is_open_palm(lm)) leftGesture = 'Open Palm';
-                  else if (is_pointer(lm)) leftGesture = 'Pointer';
-                  else if (is_two_fingers(lm)) leftGesture = 'Two Fingers';
-                  else if (is_three_fingers(lm)) leftGesture = 'Three Fingers';
-                  else if (is_four_fingers(lm)) leftGesture = 'Four Fingers';
-                  else leftGesture = 'Other';
-                }
-                // For the physical left hand, MediaPipe labels it "Right"
-                if (handType === "Right") {
-                  if (is_open_palm_right(lm)) rightGesture = 'Open Palm';
-                  // Check YOLO here so that a left-hand YOLO gesture is detected
-                  else if (is_yolo_right(lm)) rightGesture = 'YOLO';
-                  else if (is_pointer_right(lm)) rightGesture = 'Pointer';
-                  else if (is_two_fingers_right(lm)) rightGesture = 'Two Fingers';
-                  else if (is_three_fingers_right(lm)) rightGesture = 'Three Fingers';
-                  else if (is_four_fingers_right(lm)) rightGesture = 'Four Fingers';
-                  else if (is_five_fingers_right(lm)) rightGesture = 'Five Fingers';
-                  else rightGesture = 'Other';
-                }
-              }
-              // Swap display so MediaPipe 'Left' = UI 'Right hand' and 'Right' = UI 'Left hand'
-              let msg = '';
-              if (rightGesture) msg += `Left hand: ${rightGesture}. `;
-              if (leftGesture) msg += `Right hand: ${leftGesture}.`;
-              setFingerMsg(msg);
-              // (Optional) Use gestures for drawing logic here
-              // ...
-            } else {
-              setFingerMsg('');
-            }
-            offCtx.restore();
-            // Now mirror the offscreen canvas onto the visible canvas for display
-            const ctx = canvas.getContext('2d');
-            ctx.save();
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.translate(canvas.width, 0);
-            ctx.scale(-1, 1);
-            ctx.drawImage(window._offscreenCanvas, 0, 0, canvas.width, canvas.height);
-            ctx.restore();
-          } catch (err) {
-            setMediapipeError('Error drawing results: ' + err.message);
-            setShowFallback(true);
-          }
-        });
-        if (videoRef.current) {
-          camera = new window.Camera(videoRef.current, {
-            onFrame: async () => {
-              try {
-                await hands.send({ image: videoRef.current });
-              } catch (err) {
-                setMediapipeError('Error sending frame to MediaPipe: ' + err.message);
-                setShowFallback(true);
-              }
-            },
-            width: 640,
-            height: 480,
-          });
-          camera.start();
-        } else {
-          setMediapipeError('videoRef.current is null');
-          setShowFallback(true);
-        }
       } catch (err) {
-        setMediapipeError('MediaPipe setup error: ' + err.message);
-        setShowFallback(true);
+        console.error('Error accessing webcam: ', err);
+        return;
+      }
+
+      // Initialize the MediaPipe Hands solution.
+      hands = new Hands({
+        locateFile: (file) =>
+          `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+      });
+      hands.setOptions({
+        maxNumHands: 2,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.7,
+        minTrackingConfidence: 0.7,
+      });
+
+      // --- Helper Functions for Gesture Detection ---
+      // Count whether each finger is extended.
+      // For index, middle, ring, and pinky, we compare the tip (landmarks 8, 12, 16, 20)
+      // to the corresponding pip (landmarks 6, 10, 14, 18).
+      // For the thumb, use a horizontal comparison that is reversed for left/right.
+      function countExtendedFingers(landmarks, handedness) {
+        const indexExtended = landmarks[8].y < landmarks[6].y;
+        const middleExtended = landmarks[12].y < landmarks[10].y;
+        const ringExtended = landmarks[16].y < landmarks[14].y;
+        const pinkyExtended = landmarks[20].y < landmarks[18].y;
+        let thumbExtended = false;
+        if (handedness === "Left") {
+          // For left hand, thumb extended if tip is to the right of landmark 3.
+          thumbExtended = landmarks[4].x > landmarks[3].x;
+        } else if (handedness === "Right") {
+          // For right hand, thumb extended if tip is to the left of landmark 3.
+          thumbExtended = landmarks[4].x < landmarks[3].x;
+        }
+        const count = (thumbExtended ? 1 : 0) +
+                      (indexExtended ? 1 : 0) +
+                      (middleExtended ? 1 : 0) +
+                      (ringExtended ? 1 : 0) +
+                      (pinkyExtended ? 1 : 0);
+        return {
+          thumb: thumbExtended,
+          index: indexExtended,
+          middle: middleExtended,
+          ring: ringExtended,
+          pinky: pinkyExtended,
+          count: count
+        };
+      }
+
+      // Determine the gesture based on the extended fingers.
+      // Gestures:
+      // - "pointer": only index extended.
+      // - "two_finger": index + middle.
+      // - "three_finger": index + middle + ring.
+      // - "four_finger": index + middle + ring + pinky.
+      // - "open_palm": all five extended.
+      function getGestureName(extended, handedness) {
+        // YOLO gesture: index, pinky, thumb out; middle and ring folded (ONLY for user's real left hand, i.e. detected as 'Right')
+        if (
+          handedness === "Right" &&
+          extended.thumb &&
+          extended.index &&
+          !extended.middle &&
+          !extended.ring &&
+          extended.pinky
+        ) {
+          return "yolo";
+        }
+        if (extended.count === 1 && extended.index) return "pointer";
+        if (extended.count === 2 && extended.index && extended.middle) return "two_finger";
+        if (extended.count === 3 && extended.index && extended.middle && extended.ring) return "three_finger";
+        if (extended.count === 4 && extended.index && extended.middle && extended.ring && extended.pinky) return "four_finger";
+        if (extended.count === 5) return "open_palm";
+        return "unknown";
+      }
+
+      // Set up the onResults callback.
+      hands.onResults((results) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        ctx.save();
+
+        // --- Apply a horizontal flip for a mirror-effect ---
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+
+        // Draw the latest video frame (flipped).
+        ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+
+        // Draw landmarks and connectors.
+        if (results.multiHandLandmarks) {
+          for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+            const landmarks = results.multiHandLandmarks[i];
+            window.drawConnectors(ctx, landmarks, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
+            window.drawLandmarks(ctx, landmarks, { color: '#FF0000', lineWidth: 1 });
+          }
+        }
+
+        // --- Gesture Detection & Display ---
+        // Note: MediaPipe's handedness is based on the original image.
+        // Since we've flipped the canvas, swap the labels so the displayed gesture matches the user.
+        if (results.multiHandLandmarks && results.multiHandedness) {
+          for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+            let handLabel = results.multiHandedness[i].label; // "Left" or "Right" based on original image
+            // Swap the label for the mirror view.
+            const displayLabel = handLabel === "Left" ? "Right" : "Left";
+            const landmarks = results.multiHandLandmarks[i];
+            const extended = countExtendedFingers(landmarks, handLabel);
+            const gesture = getGestureName(extended, handLabel);
+
+            // Decide display position. Here we show:
+            // - Display label for the flipped view along with the detected gesture.
+            // To draw readable text, temporarily unflip the context
+            ctx.save();
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+            let textX = displayLabel === "Left" ? 10 : canvas.width - 150;
+            let textY = 30 + i * 30; // Offset if more than one hand is detected.
+            ctx.font = "24px Arial";
+            ctx.fillStyle = "yellow";
+            ctx.fillText(`${displayLabel}: ${gesture}`, textX, textY);
+            ctx.restore();
+          }
+        }
+
+        ctx.restore();
+      });
+
+      // Initialize the MediaPipe Camera with the video element.
+      if (videoRef.current) {
+        camera = new window.Camera(videoRef.current, {
+          onFrame: async () => {
+            await hands.send({ image: videoRef.current });
+          },
+          width: 640,
+          height: 480,
+        });
+        camera.start();
       }
     }
+
     setup();
+
+    // Cleanup on component unmount.
     return () => {
-      cancelled = true;
       if (camera) camera.stop();
       if (videoStream) {
-        videoStream.getTracks().forEach(track => track.stop());
+        videoStream.getTracks().forEach((track) => track.stop());
       }
     };
-  }, [onHandLandmarks]);
-
-  if (showFallback) {
-    return (
-      <div>
-        <video
-          ref={videoRef}
-          width={640}
-          height={480}
-          autoPlay
-          style={{ border: '1px solid #333', transform: 'scaleX(-1)' }}
-        />
-        <div style={{ color: 'red', marginTop: 8 }}>{mediapipeError || 'MediaPipe failed. Showing fallback.'}</div>
-      </div>
-    );
-  }
+  }, []);
 
   return (
     <div style={{ position: 'relative', width: 640, height: 480 }}>
-      <div style={{ position: 'absolute', top: -20, left: 0, width: 320, color: '#1976d2', fontWeight: 'bold', textAlign: 'center', zIndex: 2 }}>
-        {fingerMsg}
-      </div>
       <video
         ref={videoRef}
         style={{ display: 'none' }}
@@ -309,7 +193,7 @@ function WebcamFeed({ onHandLandmarks }) {
         ref={canvasRef}
         width={640}
         height={480}
-        style={{ position: 'absolute', left: 0, top: 0, border: '1px solid #333' }}
+        style={{ border: '1px solid #333' }}
       />
     </div>
   );
