@@ -15,7 +15,12 @@ function genLobbyId() {
   return String(Math.floor(1000 + Math.random() * 9000));
 }
 
+const ROUND_DURATION = 120; // seconds
+
 const WORD_BANK = ['apple', 'balloon', 'cat', 'robot', 'flower', 'spaceship', 'treehouse', 'sun', 'moon', 'castle',
+// Store round start time for each lobby
+// activeLobbies[lobbyId].roundStart = timestamp (ms)
+
 'elephant', 'ice cream truck', 'book', 'paintbrush', 'frog', 'jellyfish', 'pencil', 'mountain', 'cloud', 'firefox',
 'fox', 'donut', 'pirate ship', 'ghost', 'squirrel', 'bubble tea', 'cake', 'penguin', 'mermaid', 'giant snail',
 'skyscraper', 'hotdog', 'pizza planet', 'witch’s broom', 'giraffe', 'time machine', 'chair', 'lighthouse', 'bicycle', 'glasses',
@@ -29,6 +34,9 @@ const WORD_BANK = ['apple', 'balloon', 'cat', 'robot', 'flower', 'spaceship', 't
 'ninja', 'rain boots', 'toothbrush', 'fence', 'dream cloud', 'bubble snail', 'ferris wheel', 'guitar', 'drum', 'sock dragon',
 'cherry blossom fox', 'lava turtle', 'rocket', 'firetruck', 'peach', 'tree', 'mirror lake', 'origami crane', 'bean creature', 'flying car',
 'crystal cave', 'glitchy robot', 'kite', 'leaf boat', 'violin', 'pirate', 'steampunk cat', 'mirror', 'robot painter', 'tiny explorer'];
+
+// Store submitted images per room
+const submittedImages = {};
 
 io.on('connection', socket => {
   console.log('User connected:', socket.id);
@@ -56,16 +64,40 @@ io.on('connection', socket => {
   });
 
   socket.on('start-game', lobbyId => {
+    // Clear previous submissions for this room
+    submittedImages[lobbyId] = {};
+
     const lobby = activeLobbies[lobbyId];
     if (!lobby) return;
     const prompt = WORD_BANK[Math.floor(Math.random() * WORD_BANK.length)];
     lobby.prompt = prompt;           // ← store it
+    lobby.roundStart = Date.now();   // Track when the round starts
     console.log(`Starting ${lobbyId} → ${prompt}`);
   
-    // 1) navigate everyone
-    io.in(lobbyId).emit('start-game');
+    // 1) navigate everyone and send round duration
+    io.in(lobbyId).emit('start-game', { roundDuration: ROUND_DURATION });
     // 2) broadcast the prompt
     io.in(lobbyId).emit('new-prompt', prompt);
+    
+    // 3) End the round after the timer
+    setTimeout(() => {
+      io.in(lobbyId).emit('clear-canvas');
+      io.in(lobbyId).emit('game-over');
+      // Give clients a few seconds to submit images, then show gallery
+      setTimeout(() => {
+        const images = submittedImages[lobbyId] || {};
+        const playerIds = Object.keys(images);
+        let winner = null;
+        if (playerIds.length > 0) {
+          const randIdx = Math.floor(Math.random() * playerIds.length);
+          winner = playerIds[randIdx];
+        }
+        io.in(lobbyId).emit('show-gallery', {
+          artworks: images, // { socketId: imageDataURL }
+          winner
+        });
+      }, 3000); // 3 seconds grace period for submissions
+    }, ROUND_DURATION * 1000);
   });
   
   // new: serve stored prompt on request
@@ -76,6 +108,24 @@ io.on('connection', socket => {
     }
   });
 
+  // Allow late joiners to sync timer
+  socket.on('get-round-status', (lobbyId, cb) => {
+    const lobby = activeLobbies[lobbyId];
+    if (lobby && lobby.roundStart) {
+      const elapsed = Math.floor((Date.now() - lobby.roundStart) / 1000);
+      const timeLeft = Math.max(0, ROUND_DURATION - elapsed);
+      cb({ timeLeft });
+    } else {
+      cb({ timeLeft: null });
+    }
+  });
+
+
+  // Collect image submissions from clients
+  socket.on('submit-image', ({ roomId, image }) => {
+    if (!submittedImages[roomId]) submittedImages[roomId] = {};
+    submittedImages[roomId][socket.id] = image;
+  });
 
   socket.on('draw-line', ({ roomId, from, to, color, thickness }) => {
     socket.to(roomId).emit('peer-draw', {

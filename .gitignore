@@ -41,3 +41,9 @@ drawing_save.png
 # OS
 .DS_Store
 Thumbs.db
+
+# Windsurf files
+.windsurfrules
+.windsurfignore
+.windsurfstate
+.windsurfworkspace

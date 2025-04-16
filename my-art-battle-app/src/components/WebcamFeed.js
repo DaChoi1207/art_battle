@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import socket from '../socket';
 
@@ -23,6 +23,11 @@ function WebcamFeed({ roomId }) {
   
   // We'll store remote container elements by peerId (includes video and drawing canvas)
   const remoteContainersRef = useRef({});
+
+  // Timer state
+  const [timeLeft, setTimeLeft] = useState(null);
+  const [gameOver, setGameOver] = useState(false);
+  const intervalRef = useRef(null);
 
   // Helper: Get (or create) the remote container for a given peer.
   function getOrCreateRemoteContainer(peerId) {
@@ -82,6 +87,28 @@ function WebcamFeed({ roomId }) {
   
 
   useEffect(() => {
+    // On mount, ask server for current round status (for late joiners)
+    socket.emit('get-round-status', roomId, ({ timeLeft }) => {
+      if (typeof timeLeft === 'number' && timeLeft > 0) {
+        setGameOver(false);
+        setTimeLeft(timeLeft);
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        intervalRef.current = setInterval(() => {
+          setTimeLeft(prev => {
+            if (prev === 1) {
+              clearInterval(intervalRef.current);
+              setGameOver(true);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      } else {
+        setTimeLeft(null);
+        setGameOver(false);
+      }
+    });
+
     let camera = null;
     let hands = null;
     let videoStream = null;
@@ -320,6 +347,29 @@ function WebcamFeed({ roomId }) {
     setup();
     socket.emit('join-room', roomId);
 
+    // Listen for start-game event from server
+    socket.on('start-game', ({ roundDuration }) => {
+      setGameOver(false);
+      setTimeLeft(roundDuration);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      intervalRef.current = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev === 1) {
+            clearInterval(intervalRef.current);
+            setGameOver(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    });
+
+    // Listen for game-over event from server
+    socket.on('game-over', () => {
+      setGameOver(true);
+      setTimeLeft(0);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    });
     // Listen for remote drawing events.
     socket.on('peer-draw', ({ from, to, color, thickness, peerId }) => {
       console.log('👀 [client] peer-draw received from', peerId);
@@ -367,15 +417,29 @@ function WebcamFeed({ roomId }) {
         videoStream.getTracks().forEach((track) => track.stop());
       }
       if (videoCaptureInterval) clearInterval(videoCaptureInterval);
+      if (intervalRef.current) clearInterval(intervalRef.current);
       socket.off('peer-draw');
       socket.off('peer-video');
       socket.off('clear-canvas');
+      socket.off('start-game');
+      socket.off('game-over');
     };
-  }, []);
+  }, [roomId]);
 
   return (
     <div>
       <h2>Your Camera</h2>
+      {timeLeft !== null && !gameOver && (
+        <div className="timer">
+          Time left: {timeLeft} seconds
+        </div>
+      )}
+      {gameOver && (
+        <div className="timer" style={{ color: 'red', fontWeight: 'bold' }}>
+          Game Over!
+        </div>
+      )}
+
       <div id="local-container" style={{ position: 'relative', width: 640, height: 480, marginBottom: '20px' }}>
         <video ref={videoRef} style={{ display: 'none' }} width={640} height={480} autoPlay />
         <canvas ref={canvasRef} width={640} height={480} style={{ border: '1px solid #333', position: 'absolute', top: 0, left: 0 }} />
