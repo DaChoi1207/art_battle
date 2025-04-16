@@ -1,5 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 
+// THIS FILE IS NOW USELESS
+
 function Canvas({ drawingData, onDrawLine }) {
   const canvasRef = useRef(null);
   const [drawing, setDrawing] = useState(false);

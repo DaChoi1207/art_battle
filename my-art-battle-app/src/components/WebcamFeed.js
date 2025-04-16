@@ -1,24 +1,91 @@
 import React, { useRef, useEffect } from 'react';
 import { io } from 'socket.io-client';
+import socket from '../socket';
 
-const socket = io('http://localhost:3001'); // Socket.io connection (adjust port if necessary)
-const ROOM_ID = "test-room";
 
-function WebcamFeed() {
+//const socket = io('http://localhost:3001'); // Socket.io connection (adjust port if necessary)
+
+// // Ensure we join the room once connected
+// socket.on('connect', () => {
+//   console.log('Socket connected:', socket.id);
+//   socket.emit('join-room', roomId);
+//   console.log('Joined room:', roomId);
+// });
+
+function WebcamFeed({ roomId }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const remoteCanvasesRef = useRef({});
   const drawingCanvasRef = useRef(null);
   const lastDrawingPosRef = useRef(null);
   const brushSizeRef = useRef(4);
   const lineColorRef = useRef("red");
   
-  // We'll store remote peers' canvases here
-  const remoteCanvasesRef = useRef({});
+  // We'll store remote container elements by peerId (includes video and drawing canvas)
+  const remoteContainersRef = useRef({});
+
+  // Helper: Get (or create) the remote container for a given peer.
+  function getOrCreateRemoteContainer(peerId) {
+    let container = document.getElementById("remote-peer-" + peerId);
+    if (!container) {
+      container = document.createElement('div');
+      container.id = "remote-peer-" + peerId;
+      container.style.position = 'relative';
+      container.style.width = '640px';
+      container.style.height = '480px';
+      container.style.border = '1px solid blue';
+      container.style.margin = '5px';
+      
+      // 1) Video element
+      const videoElem = document.createElement('img');
+      videoElem.id = "remote-video-" + peerId;
+      videoElem.style.position = 'absolute';
+      videoElem.style.top = '0';
+      videoElem.style.left = '0';
+      videoElem.style.width = '100%';
+      videoElem.style.height = '100%';
+      videoElem.style.zIndex = "1";
+      container.appendChild(videoElem);
+      
+      // 2) Drawing overlay canvas (rename to avoid shadowing)
+      const peerCanvas = document.createElement('canvas');
+      peerCanvas.id = "remote-drawing-" + peerId;
+      peerCanvas.width = 640;
+      peerCanvas.height = 480;
+      peerCanvas.style.position = 'absolute';
+      peerCanvas.style.top = '0';
+      peerCanvas.style.left = '0';
+      peerCanvas.style.pointerEvents = 'none';
+      peerCanvas.style.zIndex = "2";
+      container.appendChild(peerCanvas);
+      
+      // 3) Store it _after_ declaration
+      remoteCanvasesRef.current[peerId] = peerCanvas;
+      
+      // 4) Label
+      const label = document.createElement('div');
+      label.style.position = 'absolute';
+      label.style.bottom = '0';
+      label.style.left = '0';
+      label.style.background = 'rgba(0,0,0,0.5)';
+      label.style.color = 'white';
+      label.style.fontSize = '12px';
+      label.style.padding = '2px';
+      label.innerText = peerId;
+      container.appendChild(label);
+  
+      // 5) Add to DOM
+      document.getElementById('remote-container').appendChild(container);
+    }
+    return container;
+  }
+  
 
   useEffect(() => {
     let camera = null;
     let hands = null;
     let videoStream = null;
+    let videoCaptureInterval = null;
 
     async function setup() {
       const Hands = window.Hands;
@@ -144,6 +211,7 @@ function WebcamFeed() {
         if (shouldClearCanvas) {
           drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
           lastDrawingPosRef.current = null;
+          socket.emit('clear-canvas', roomId);
         } else if (isColorChangeActive && rightHandGesture) {
           if (rightHandGesture === "pointer") lineColorRef.current = "blue";
           else if (rightHandGesture === "two_finger") lineColorRef.current = "green";
@@ -204,7 +272,7 @@ function WebcamFeed() {
               drawingCtx.stroke();
               // MULTIPLAYER SYNC: Emit this drawn segment to other players
               socket.emit('draw-line', {
-                roomId: ROOM_ID,
+                roomId: roomId,
                 from: previousPos,
                 to: { x, y },
                 color: lineColorRef.current,
@@ -238,56 +306,59 @@ function WebcamFeed() {
         });
         camera.start();
       }
+
+      // Start sending our webcam frames to other peers.
+      // We capture the already drawn (mirrored) canvas as an image.
+      videoCaptureInterval = setInterval(() => {
+        if (!canvasRef.current) return;
+        const dataURL = canvasRef.current.toDataURL('image/jpeg', 0.5);
+        console.log('📤 [client] sending video-frame, len=', dataURL.length);
+        socket.emit('video-frame', { roomId, image: dataURL, peerId: socket.id });
+      }, 50);
     }
 
     setup();
-    socket.emit('join-room', ROOM_ID);
+    socket.emit('join-room', roomId);
 
-    // MULTIPLAYER SYNC: Listen for remote drawing events from other peers.
+    // Listen for remote drawing events.
     socket.on('peer-draw', ({ from, to, color, thickness, peerId }) => {
-      let peerCanvas = remoteCanvasesRef.current[peerId];
-      if (!peerCanvas) {
-        const container = document.createElement('div');
-        container.style.position = 'relative';
-        container.style.width = '320px';
-        container.style.height = '240px';
-        container.style.border = '1px solid blue';
-        container.style.margin = '5px';
-
-        const canvas = document.createElement('canvas');
-        canvas.width = 320;
-        canvas.height = 240;
-        canvas.style.position = 'absolute';
-        canvas.style.top = '0';
-        canvas.style.left = '0';
-        container.appendChild(canvas);
-
-        // Optional: add a label with the peer ID
-        const label = document.createElement('div');
-        label.style.position = 'absolute';
-        label.style.bottom = '0';
-        label.style.left = '0';
-        label.style.background = 'rgba(0,0,0,0.5)';
-        label.style.color = 'white';
-        label.style.fontSize = '12px';
-        label.style.padding = '2px';
-        label.innerText = peerId;
-        container.appendChild(label);
-
-        const remoteContainer = document.getElementById('remote-container');
-        remoteContainer.appendChild(container);
-        peerCanvas = canvas;
-        remoteCanvasesRef.current[peerId] = canvas;
+      console.log('👀 [client] peer-draw received from', peerId);
+      const container = getOrCreateRemoteContainer(peerId);
+      const peerCanvas = container.querySelector('#remote-drawing-' + peerId);
+      if (peerCanvas) {
+        const ctx = peerCanvas.getContext('2d');
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = color;
+        ctx.lineWidth = thickness * (peerCanvas.width / 640);
+        ctx.beginPath();
+        ctx.moveTo(from.x * (peerCanvas.width / 640), from.y * (peerCanvas.height / 480));
+        ctx.lineTo(to.x * (peerCanvas.width / 640), to.y * (peerCanvas.height / 480));
+        ctx.stroke();
       }
-      const ctx = peerCanvas.getContext('2d');
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.strokeStyle = color;
-      ctx.lineWidth = thickness * (peerCanvas.width / 640);
-      ctx.beginPath();
-      ctx.moveTo(from.x * (peerCanvas.width / 640), from.y * (peerCanvas.height / 480));
-      ctx.lineTo(to.x * (peerCanvas.width / 640), to.y * (peerCanvas.height / 480));
-      ctx.stroke();
+    });
+
+    // Listen for remote video frames.
+    socket.on('peer-video', ({ image, peerId }) => {
+      console.log('👀 [client] peer-video received for', peerId, 'len=', image?.length);
+      const container = getOrCreateRemoteContainer(peerId);
+      const videoElem = container.querySelector('#remote-video-' + peerId);
+      if (videoElem) videoElem.src = image;
+    });
+
+    // When someone clears, wipe all the remote canvases:
+    socket.on('clear-canvas', () => {
+      console.log('Received clear-canvas event');
+      // Clear the local drawing canvas
+      if (drawingCanvasRef.current) {
+        const ctx = drawingCanvasRef.current.getContext('2d');
+        ctx.clearRect(0, 0, drawingCanvasRef.current.width, drawingCanvasRef.current.height);
+      }
+      // Clear all remote overlays
+      Object.values(remoteCanvasesRef.current).forEach(canvas => {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      });
     });
 
     return () => {
@@ -295,7 +366,10 @@ function WebcamFeed() {
       if (videoStream) {
         videoStream.getTracks().forEach((track) => track.stop());
       }
+      if (videoCaptureInterval) clearInterval(videoCaptureInterval);
       socket.off('peer-draw');
+      socket.off('peer-video');
+      socket.off('clear-canvas');
     };
   }, []);
 
