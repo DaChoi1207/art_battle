@@ -16,8 +16,14 @@ io.on('connection', (socket) => {
     console.log(`User ${socket.id} joined room ${roomId}`);
   });
 
-  socket.on('draw-line', ({ roomId, lineData }) => {
-    socket.to(roomId).emit('draw-line', lineData);
+  socket.on('draw-line', ({ roomId, from, to, color, thickness }) => {
+    socket.to(roomId).emit('peer-draw', {
+      from,
+      to,
+      color,
+      thickness,
+      peerId: socket.id
+    });
   });
 
   socket.on('clear-canvas', (roomId) => {
