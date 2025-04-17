@@ -31,6 +31,12 @@ function WebcamFeed({ roomId }) {
 
   // Helper: Get (or create) the remote container for a given peer.
   function getOrCreateRemoteContainer(peerId) {
+    const parent = document.getElementById('remote-container');
+    if (!parent) {
+      // we’re no longer on the game screen → skip
+      return null;
+    }
+
     let container = document.getElementById("remote-peer-" + peerId);
     if (!container) {
       container = document.createElement('div');
@@ -80,7 +86,7 @@ function WebcamFeed({ roomId }) {
       container.appendChild(label);
   
       // 5) Add to DOM
-      document.getElementById('remote-container').appendChild(container);
+      parent.appendChild(container);
     }
     return container;
   }
@@ -379,6 +385,7 @@ function WebcamFeed({ roomId }) {
     socket.on('peer-draw', ({ from, to, color, thickness, peerId }) => {
       console.log('👀 [client] peer-draw received from', peerId);
       const container = getOrCreateRemoteContainer(peerId);
+      if (!container) return;  
       const peerCanvas = container.querySelector('#remote-drawing-' + peerId);
       if (peerCanvas) {
         const ctx = peerCanvas.getContext('2d');
