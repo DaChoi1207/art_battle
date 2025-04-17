@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom'; // ← make sure this is here
 import socket from '../socket';
 import WebcamFeed from './WebcamFeed';
 
 export default function GameInterface() {
   const { id } = useParams();  
+  const navigate = useNavigate(); // ← you need this for navigation
   const [prompt, setPrompt] = useState(null);
 
   useEffect(() => {
@@ -18,6 +19,16 @@ export default function GameInterface() {
       socket.off('new-prompt');
     };
   }, [id]);
+
+  useEffect(() => {
+    socket.on('show-gallery', ({ artworks, winner }) => {
+      navigate(`/gallery/${id}`, { state: { artworks, winner } });
+    });
+  
+    return () => {
+      socket.off('show-gallery');
+    };
+  }, [id, navigate]);
 
   if (!prompt) {
     return (
@@ -33,7 +44,6 @@ export default function GameInterface() {
         Draw this: <span className="text-blue-600">{prompt}</span>
       </div>
       <WebcamFeed roomId={id} />
-      {/* TODO: timer overlay */}
     </div>
   );
 }

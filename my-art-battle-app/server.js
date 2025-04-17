@@ -15,7 +15,7 @@ function genLobbyId() {
   return String(Math.floor(1000 + Math.random() * 9000));
 }
 
-const ROUND_DURATION = 120; // seconds
+const ROUND_DURATION = 15; // seconds
 
 const WORD_BANK = ['apple', 'balloon', 'cat', 'robot', 'flower', 'spaceship', 'treehouse', 'sun', 'moon', 'castle',
 // Store round start time for each lobby
@@ -81,8 +81,8 @@ io.on('connection', socket => {
     
     // 3) End the round after the timer
     setTimeout(() => {
-      io.in(lobbyId).emit('clear-canvas');
       io.in(lobbyId).emit('game-over');
+      io.in(lobbyId).emit('clear-canvas');
       // Give clients a few seconds to submit images, then show gallery
       setTimeout(() => {
         const images = submittedImages[lobbyId] || {};

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Home from './components/Home';
 import Lobby from './components/Lobby';
 import GameInterface from './components/GameInterface';
+import Gallery from './components/Gallery';
 
 function App() {
   return (
@@ -10,6 +11,7 @@ function App() {
         <Route path="/"        element={<Home />} />
         <Route path="/lobby/:id" element={<Lobby />} />
         <Route path="/game/:id"  element={<GameInterface />} />
+        <Route path="/gallery/:id" element={<Gallery />} />
       </Routes>
     </BrowserRouter>
   );

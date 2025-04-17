@@ -369,6 +369,11 @@ function WebcamFeed({ roomId }) {
       setGameOver(true);
       setTimeLeft(0);
       if (intervalRef.current) clearInterval(intervalRef.current);
+      // Submit the local canvas to the server
+      if (drawingCanvasRef.current) {
+        const image = drawingCanvasRef.current.toDataURL('image/png');
+        socket.emit('submit-image', { roomId, image });
+      }
     });
     // Listen for remote drawing events.
     socket.on('peer-draw', ({ from, to, color, thickness, peerId }) => {
