@@ -34,13 +34,13 @@ export default function Gallery() {
       <h2 className="text-2xl font-bold mb-4">Gallery</h2>
 
       <div className="flex flex-wrap justify-center gap-4">
-        {Object.entries(artworks).map(([playerId, img]) => (
+        {Object.entries(artworks).map(([playerId, data]) => (
           <div key={playerId} className="border p-2 rounded">
             <p>
-              {playerId}
+              {data.nickname || playerId}
               {playerId === winner && ' 🏆 Winner!'}
             </p>
-            <img src={img} alt={`art from ${playerId}`} width={300} />
+            <img src={data.image} alt={`art from ${data.nickname || playerId}`} width={300} />
           </div>
         ))}
       </div>

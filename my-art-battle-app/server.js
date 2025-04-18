@@ -10,6 +10,8 @@ const io = new Server(server, {
 });
 
 const activeLobbies = {};
+const socketToLobby = {}; // Track which lobby each socket is in
+const socketToNickname = {}; // Track nickname for each socket
 function genLobbyId() {
   // 4‑digit numeric code (1000–9999)
   return String(Math.floor(1000 + Math.random() * 9000));
@@ -56,15 +58,19 @@ io.on('connection', socket => {
     io.to(lobbyId).emit('lobby-update', activeLobbies[lobbyId].players);
   });
 
-  socket.on('join-lobby', (lobbyId, ack) => {
+  socket.on('join-lobby', (lobbyId, nickname, ack) => {
     const lobby = activeLobbies[lobbyId];
     if (!lobby) return ack(false);
     if (!lobby.players.includes(socket.id)) {
       lobby.players.push(socket.id);
     }
     socket.join(lobbyId);
+    socketToLobby[socket.id] = lobbyId; // Track this socket's lobby
+    socketToNickname[socket.id] = nickname || `Player-${socket.id.slice(0, 5)}`;
     ack(true);
-    io.to(lobbyId).emit('lobby-update', lobby.players);
+    // Send an array of { id, nickname } objects
+    const playerList = lobby.players.map(id => ({ id, nickname: socketToNickname[id] || id }));
+    io.to(lobbyId).emit('lobby-update', playerList);
   });
 
   // New: set handedness for lobby
@@ -110,8 +116,17 @@ io.on('connection', socket => {
           winner = playerIds[Math.floor(Math.random() * playerIds.length)];
         }
 
+        // Send artworks as { playerId: { nickname, image } }
+        const artworks = {};
+        for (const id of playerIds) {
+          artworks[id] = {
+            nickname: socketToNickname[id] || id,
+            image: images[id]
+          };
+        }
+
         io.in(lobbyId).emit('show-gallery', {
-          artworks: images,
+          artworks,
           winner,
           hostId: activeLobbies[lobbyId].players[0]   // ← include true host ID
         });
@@ -165,6 +180,21 @@ io.on('connection', socket => {
 
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
+    const lobbyId = socketToLobby[socket.id];
+    if (lobbyId && activeLobbies[lobbyId]) {
+      // Remove player from lobby
+      activeLobbies[lobbyId].players = activeLobbies[lobbyId].players.filter(id => id !== socket.id);
+      // If lobby is empty, delete it
+      if (activeLobbies[lobbyId].players.length === 0) {
+        delete activeLobbies[lobbyId];
+      } else {
+        // Otherwise, update the lobby for remaining players
+        const playerList = activeLobbies[lobbyId].players.map(id => ({ id, nickname: socketToNickname[id] || id }));
+        io.to(lobbyId).emit('lobby-update', playerList);
+      }
+    }
+    delete socketToLobby[socket.id];
+    delete socketToNickname[socket.id];
   });
 });
 

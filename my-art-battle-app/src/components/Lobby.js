@@ -7,11 +7,12 @@ function Lobby() {
   const { id } = useParams();
   const [players, setPlayers] = useState([]);
   const navigate = useNavigate();
+  const nickname = (typeof window !== 'undefined' && window.history.state && window.history.state.usr && window.history.state.usr.nickname) || '';
   
 
   useEffect(() => {
     // Join lobby when component mounts
-    socket.emit('join-lobby', id, ok => {
+    socket.emit('join-lobby', id, nickname, ok => {
       if (!ok) {
         alert('Invalid lobby code');
         return navigate('/');
@@ -33,23 +34,20 @@ function Lobby() {
     };
   }, [id, navigate, handedness]);
 
-  // Remove duplicates in case of multiple joins
-  let playerList = players;
-  if (players && typeof players === 'object' && !Array.isArray(players)) {
-    // Handle the { players: [...], dominance: ... } shape
-    playerList = players.players || [];
-  }
-  const uniquePlayers = Array.from(new Set(playerList));
+  // players is now an array of {id, nickname}
+  const playerList = Array.isArray(players) ? players : [];
   // First player is the host
-  const isHost = uniquePlayers[0] === socket.id;
+  const isHost = playerList.length > 0 && playerList[0].id === socket.id;
 
   return (
     <div className="p-4">
       <h1>Lobby {id}</h1>
       <ul>
-        {uniquePlayers.map(pid => (
-          <li key={pid}>
-            {pid}{pid === socket.id ? ' (You)' : ''}
+        {playerList.map(p => (
+          <li key={p.id}>
+            {p.nickname || p.id}
+            {p.id === socket.id ? ' (You)' : ''}
+            {playerList[0] && p.id === playerList[0].id ? ' (Host)' : ''}
           </li>
         ))}
       </ul>
