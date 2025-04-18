@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { MiniWebcamFeed, MiniRemoteWebcam } from './MiniWebcamFeed';
 import { useParams, useNavigate } from 'react-router-dom';
 import socket from '../socket';
 
@@ -15,7 +16,8 @@ function Lobby() {
   const [roundDuration, setRoundDuration] = useState('15');
   const navigate = useNavigate();
   const nickname = (typeof window !== 'undefined' && window.history.state && window.history.state.usr && window.history.state.usr.nickname) || '';
-  
+  const [webcamEnabled, setWebcamEnabled] = useState(false);
+  const webcamFrames = useRef({});
 
   useEffect(() => {
     setLoading(true);
@@ -23,6 +25,8 @@ function Lobby() {
     setInvalid(false);
     // Join lobby when component mounts
     socket.emit('join-lobby', id, nickname, ok => {
+      // Clear webcam frames on join
+      webcamFrames.current = {};
       setLoading(false);
       if (!ok) {
         setInvalid(true);
@@ -34,6 +38,13 @@ function Lobby() {
 
     // Update player list
     socket.on('lobby-update', setPlayers);
+
+    // Listen for webcam frames from peers
+    socket.on('lobby-peer-video', ({ image, peerId }) => {
+      webcamFrames.current = { ...webcamFrames.current, [peerId]: image };
+      // force rerender
+      setWebcamFramesTick(tick => tick + 1);
+    });
 
     // Handle being kicked
     socket.on('kicked', () => {
@@ -55,6 +66,7 @@ function Lobby() {
       socket.off('lobby-update');
       socket.off('start-game');
       socket.off('game-ongoing');
+      socket.off('lobby-peer-video');
     };
   }, [id, navigate, handedness, nickname]);
 
@@ -62,6 +74,8 @@ function Lobby() {
   const playerList = Array.isArray(players) ? players : [];
   // First player is the host
   const isHost = playerList.length > 0 && playerList[0].id === socket.id;
+  // force rerender when webcam frames change
+  const [, setWebcamFramesTick] = useState(0);
 
   useEffect(() => {
     // Listen for privacy updates from server
@@ -76,6 +90,23 @@ function Lobby() {
   return (
     <div className="p-4">
       <h1>Lobby {id}</h1>
+      <div className="mb-4 flex gap-4 flex-wrap">
+        {playerList.map(player => (
+          <div key={player.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 90 }}>
+            {player.id === socket.id ? (
+              webcamEnabled ? <MiniWebcamFeed lobbyId={id} enabled={webcamEnabled} /> : <MiniRemoteWebcam peerId={player.id} lobbyId={id} frame={null} />
+            ) : (
+              <MiniRemoteWebcam peerId={player.id} lobbyId={id} frame={webcamFrames.current[player.id]} />
+            )}
+            <div style={{ fontSize: 13, marginTop: 2 }}>{player.nickname || player.id}</div>
+            {player.id === socket.id && (
+              <button className="btn btn-xs mt-1" onClick={() => setWebcamEnabled(e => !e)}>
+                {webcamEnabled ? 'Turn Off Camera' : 'Turn On Camera'}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
       {gameOngoingMsg && (
         <div className="mb-2 p-2 bg-yellow-200 text-yellow-900 rounded">
           {gameOngoingMsg}

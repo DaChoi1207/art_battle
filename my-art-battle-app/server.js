@@ -248,6 +248,19 @@ io.on('connection', socket => {
     });
   });
 
+  // Lobby webcam relay
+  socket.on('lobby-video-frame', ({ lobbyId, image }) => {
+    // Store the latest frame for this user in this lobby
+    if (!activeLobbies[lobbyId]) return;
+    if (!activeLobbies[lobbyId].webcamFrames) activeLobbies[lobbyId].webcamFrames = {};
+    activeLobbies[lobbyId].webcamFrames[socket.id] = image;
+    // Relay to all users in lobby
+    socket.to(lobbyId).emit('lobby-peer-video', {
+      image,
+      peerId: socket.id
+    });
+  });
+
   socket.on('clear-canvas', roomId => {
     console.log('Clearing canvas for room', roomId);
     socket.to(roomId).emit('clear-canvas');
