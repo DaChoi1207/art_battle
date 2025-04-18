@@ -52,7 +52,7 @@ io.on('connection', socket => {
 
   socket.on('create-lobby', (ack) => {
     const lobbyId = genLobbyId();
-    activeLobbies[lobbyId] = { players: [socket.id], prompt: null, dominance: 'right' };
+    activeLobbies[lobbyId] = { players: [socket.id], prompt: null, dominance: 'right', private: true };
     socket.join(lobbyId);
     // Assign default nickname if not set
     if (!socketToNickname[socket.id]) {
@@ -62,6 +62,48 @@ io.on('connection', socket => {
     // Send an array of { id, nickname } objects
     const playerList = activeLobbies[lobbyId].players.map(id => ({ id, nickname: socketToNickname[id] || id }));
     io.to(lobbyId).emit('lobby-update', playerList);
+  });
+
+  socket.on('set-lobby-privacy', (lobbyId, isPrivate) => {
+    if (activeLobbies[lobbyId] && activeLobbies[lobbyId].players[0] === socket.id) {
+      activeLobbies[lobbyId].private = isPrivate;
+      // Notify lobby of privacy change if needed
+      io.to(lobbyId).emit('lobby-privacy-update', isPrivate);
+    }
+  });
+
+  socket.on('get-public-lobbies', (ack) => {
+    // Only lobbies that are public, not in-game, and not full (optional)
+    const publicLobbies = Object.entries(activeLobbies)
+      .filter(([id, lobby]) => !lobby.private && !lobby.prompt)
+      .map(([id]) => id);
+    ack(publicLobbies);
+  });
+
+  socket.on('join-random-public-room', (nickname, ack) => {
+    const publicLobbies = Object.entries(activeLobbies)
+      .filter(([id, lobby]) => !lobby.private && !lobby.prompt)
+      .map(([id]) => id);
+    if (publicLobbies.length === 0) return ack(false);
+    const randomId = publicLobbies[Math.floor(Math.random() * publicLobbies.length)];
+    // Directly join the room (do not emit to self)
+    if (!activeLobbies[randomId]) return ack(false);
+    if (!activeLobbies[randomId].players.includes(socket.id)) {
+      activeLobbies[randomId].players.push(socket.id);
+    }
+    socket.join(randomId);
+    let finalNickname = nickname && nickname.trim() ? nickname : `Player-${socket.id.slice(0, 4)}`;
+    socketToNickname[socket.id] = finalNickname;
+    socketToLobby[socket.id] = randomId;
+    ack(randomId);
+    // Notify if game is ongoing
+    const lobby = activeLobbies[randomId];
+    if (lobby && lobby.roundStart && lobby.prompt) {
+      io.to(socket.id).emit('game-ongoing');
+    }
+    // Send updated player list
+    const playerList = activeLobbies[randomId].players.map(id => ({ id, nickname: socketToNickname[id] || id }));
+    io.to(randomId).emit('lobby-update', playerList);
   });
 
   socket.on('join-lobby', (lobbyId, nickname, ack) => {
@@ -219,10 +261,10 @@ io.on('connection', socket => {
       const lobby = activeLobbies[lobbyId];
       const wasHost = lobby.players[0] === socket.id;
       lobby.players = lobby.players.filter(id => id !== socket.id);
-
-      // If lobby is empty, delete it
+      // If lobby is now empty, delete it and clean up
       if (lobby.players.length === 0) {
         delete activeLobbies[lobbyId];
+        if (submittedImages[lobbyId]) delete submittedImages[lobbyId];
       } else {
         // If host left, promote next player to host
         if (wasHost) {

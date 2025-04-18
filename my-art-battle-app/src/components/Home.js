@@ -33,6 +33,19 @@ function Home() {
     return () => socket.off('kicked', handler);
   }, [navigate]);
 
+  const joinPublic = () => {
+    socket.emit('join-random-public-room', nickname.trim() || undefined, (ok) => {
+      if (ok && typeof ok === 'string') {
+        navigate(`/lobby/${ok}`, { state: { nickname: nickname.trim() || undefined } });
+      } else if (ok === true) {
+        // fallback if server just returns true
+        // user will be redirected by lobby join
+      } else {
+        alert('No public rooms available.');
+      }
+    });
+  };
+
   return (
     <div className="p-4">
       <div className="mb-4">
@@ -45,6 +58,7 @@ function Home() {
         />
       </div>
       <button onClick={create} className="btn">Create Lobby</button>
+      <button onClick={joinPublic} className="btn ml-2">Join Public Room</button>
       <div className="mt-4">
         <input
           placeholder="Enter lobby code"

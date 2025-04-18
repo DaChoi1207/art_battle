@@ -3,23 +3,33 @@ import { useParams, useNavigate } from 'react-router-dom';
 import socket from '../socket';
 
 function Lobby() {
+  const [joined, setJoined] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [invalid, setInvalid] = useState(false);
   const [gameOngoingMsg, setGameOngoingMsg] = useState("");
   const [handedness, setHandedness] = useState('right');
   const [copyMsg, setCopyMsg] = useState('');
   const { id } = useParams();
   const [players, setPlayers] = useState([]);
+  const [isPrivate, setIsPrivate] = useState(true);
   const [roundDuration, setRoundDuration] = useState('15');
   const navigate = useNavigate();
   const nickname = (typeof window !== 'undefined' && window.history.state && window.history.state.usr && window.history.state.usr.nickname) || '';
   
 
   useEffect(() => {
+    setLoading(true);
+    setJoined(false);
+    setInvalid(false);
     // Join lobby when component mounts
     socket.emit('join-lobby', id, nickname, ok => {
+      setLoading(false);
       if (!ok) {
-        alert('Invalid lobby code');
-        return navigate('/');
+        setInvalid(true);
+        setTimeout(() => navigate('/'), 1800);
+        return;
       }
+      setJoined(true);
     });
 
     // Update player list
@@ -46,12 +56,22 @@ function Lobby() {
       socket.off('start-game');
       socket.off('game-ongoing');
     };
-  }, [id, navigate, handedness]);
+  }, [id, navigate, handedness, nickname]);
 
   // players is now an array of {id, nickname}
   const playerList = Array.isArray(players) ? players : [];
   // First player is the host
   const isHost = playerList.length > 0 && playerList[0].id === socket.id;
+
+  useEffect(() => {
+    // Listen for privacy updates from server
+    socket.on('lobby-privacy-update', setIsPrivate);
+    return () => socket.off('lobby-privacy-update', setIsPrivate);
+  }, [id]);
+
+  if (invalid) return <div className="p-4 text-red-600">Invalid lobby code. Redirecting...</div>;
+  if (loading) return <div className="p-4">Loading...</div>;
+  if (!joined) return null;
 
   return (
     <div className="p-4">
@@ -61,6 +81,23 @@ function Lobby() {
           {gameOngoingMsg}
         </div>
       )}
+      <div className="mb-2 flex items-center gap-4">
+        <span className="text-sm">Room privacy: <b>{isPrivate ? 'Private' : 'Public'}</b></span>
+        {isHost && (
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={!isPrivate}
+              onChange={e => {
+                const newPrivate = !e.target.checked;
+                setIsPrivate(newPrivate);
+                socket.emit('set-lobby-privacy', id, newPrivate);
+              }}
+            />
+            <span>{isPrivate ? 'Make Public' : 'Make Private'}</span>
+          </label>
+        )}
+      </div>
       {isHost && (
         <div className="mb-2">
           <button
@@ -71,7 +108,7 @@ function Lobby() {
               setTimeout(() => setCopyMsg(''), 1500);
             }}
           >
-            Copy link
+            Copy Invite Link
           </button>
           {copyMsg && <span className="ml-2 text-green-600">{copyMsg}</span>}
         </div>
