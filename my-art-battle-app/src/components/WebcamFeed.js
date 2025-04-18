@@ -12,7 +12,11 @@ import socket from '../socket';
 //   console.log('Joined room:', roomId);
 // });
 
-function WebcamFeed({ roomId }) {
+function WebcamFeed({ roomId, dominance = 'right' }) {
+  console.log('WebcamFeed: received dominance prop:', dominance);
+  const drawHand = dominance === 'right' ? 'Right' : 'Left';
+  const modeHand = dominance === 'right' ? 'Left' : 'Right';
+  console.log('WebcamFeed: drawHand:', drawHand, 'modeHand:', modeHand);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const remoteCanvasesRef = useRef({});
@@ -208,8 +212,11 @@ function WebcamFeed({ roomId }) {
             const extended = countExtendedFingers(landmarks, rawLabel);
             const gesture = getGestureName(extended, rawLabel);
 
-            const displayLabel = rawLabel === "Left" ? "Right (Draw)" : "Left (Mode)";
-            const textX = rawLabel === "Right" ? 10 : canvas.width - 150;
+            // Use drawHand/modeHand for logic, not hardcoded labels
+            const isDraw = rawLabel === drawHand;
+            const isMode = rawLabel === modeHand;
+            const displayLabel = isDraw ? `${drawHand} (Draw)` : `${modeHand} (Mode)`;
+            const textX = isDraw ? 10 : canvas.width - 150;
             const textY = 30 + i * 30;
 
             window.drawConnectors(ctx, landmarks, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
@@ -222,15 +229,15 @@ function WebcamFeed({ roomId }) {
             ctx.fillText(`${displayLabel}: ${gesture}`, textX, textY);
             ctx.restore();
 
-            if (rawLabel === "Right") {
-              // For mirroring logic: raw "Right" hand becomes the drawing hand.
-              leftHandGesture = gesture;
+            if (isDraw) {
+              // This hand is for drawing (respects dominance)
               if (gesture === "yolo") shouldClearCanvas = true;
               else if (gesture === "pointer") isDrawingActive = true;
               else if (gesture === "two_finger") isErasingActive = true;
               else if (gesture === "three_finger") isBrushResizeActive = true;
               else if (gesture === "open_palm") isColorChangeActive = true;
-            } else if (rawLabel === "Left") {
+            } else if (isMode) {
+              // This hand is for mode (respects dominance)
               rightHandGesture = gesture;
               rightHandLandmarks = landmarks;
             }
@@ -436,7 +443,7 @@ function WebcamFeed({ roomId }) {
       socket.off('start-game');
       socket.off('game-over');
     };
-  }, [roomId]);
+  }, [roomId, dominance]);
 
   return (
     <div>

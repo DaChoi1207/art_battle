@@ -50,7 +50,7 @@ io.on('connection', socket => {
 
   socket.on('create-lobby', ack => {
     const lobbyId = genLobbyId();
-    activeLobbies[lobbyId] = { players: [socket.id], prompt: null };
+    activeLobbies[lobbyId] = { players: [socket.id], prompt: null, dominance: 'right' };
     socket.join(lobbyId);
     ack(lobbyId);
     io.to(lobbyId).emit('lobby-update', activeLobbies[lobbyId].players);
@@ -67,6 +67,19 @@ io.on('connection', socket => {
     io.to(lobbyId).emit('lobby-update', lobby.players);
   });
 
+  // New: set handedness for lobby
+  socket.on('set-handedness', ({ lobbyId, handedness }, ack) => {
+    if (activeLobbies[lobbyId]) {
+      activeLobbies[lobbyId].dominance = handedness;
+      // Optionally broadcast dominance to lobby
+      io.to(lobbyId).emit('lobby-update', {
+        players: activeLobbies[lobbyId].players,
+        dominance: handedness
+      });
+    }
+    if (ack) ack(); // Always acknowledge to client
+  });
+
   socket.on('join-room', roomId => {
     socket.join(roomId);
     console.log(`User ${socket.id} joined room ${roomId}`);
@@ -81,8 +94,7 @@ io.on('connection', socket => {
     const prompt = WORD_BANK[Math.floor(Math.random() * WORD_BANK.length)];
     lobby.prompt = prompt;
     lobby.roundStart = Date.now();
-    console.log(`Starting ${lobbyId} → ${prompt}`);
-
+    console.log('Server: emitting start-game to lobby', lobbyId, 'with', { roundDuration: ROUND_DURATION });
     io.in(lobbyId).emit('start-game', { roundDuration: ROUND_DURATION });
     io.in(lobbyId).emit('new-prompt', prompt);
 

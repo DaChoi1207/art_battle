@@ -3,8 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import socket from '../socket';
 import WebcamFeed from './WebcamFeed';
+import { useLocation } from 'react-router-dom';
 
 export default function GameInterface() {
+  const { state } = useLocation();
+  // If you came from Lobby with a handedness, use it; otherwise default.
+  const handedness = state?.handedness ?? 'right';
+  console.log('GameInterface: handedness from location.state:', state?.handedness, 'final:', handedness);
   const { id } = useParams();
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState(null);
@@ -17,6 +22,15 @@ export default function GameInterface() {
       socket.off('new-prompt', setPrompt);
     };
   }, [id]);
+
+  // Listen for start-game to capture handedness/dominance
+  // useEffect(() => {
+  //   const handler = ({ roundDuration, dominance }) => {
+  //     if (dominance) setDominance(dominance);
+  //   };
+  //   socket.on('start-game', handler);
+  //   return () => socket.off('start-game', handler);
+  // }, [id]);
 
   // 2) When the round is over, clean up socket listeners and navigate to the gallery
   useEffect(() => {
@@ -53,7 +67,7 @@ export default function GameInterface() {
       <div className="mb-4 p-2 bg-yellow-100 rounded text-xl font-bold text-center">
         Draw this: <span className="text-blue-600">{prompt}</span>
       </div>
-      <WebcamFeed roomId={id} />
+      <WebcamFeed roomId={id} dominance={handedness} />
     </div>
   );
 }
