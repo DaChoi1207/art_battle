@@ -75,6 +75,11 @@ io.on('connection', socket => {
     socketToNickname[socket.id] = finalNickname;
     socketToLobby[socket.id] = lobbyId; // <-- Fix: track which lobby this socket is in
     ack(true);
+    // Notify if game is ongoing
+    const lobby = activeLobbies[lobbyId];
+    if (lobby && lobby.roundStart && lobby.prompt) {
+      io.to(socket.id).emit('game-ongoing');
+    }
     // Send an array of { id, nickname } objects
     const playerList = activeLobbies[lobbyId].players.map(id => ({ id, nickname: socketToNickname[id] || id }));
     io.to(lobbyId).emit('lobby-update', playerList);

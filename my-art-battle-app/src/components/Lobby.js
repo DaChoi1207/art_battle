@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import socket from '../socket';
 
 function Lobby() {
+  const [gameOngoingMsg, setGameOngoingMsg] = useState("");
   const [handedness, setHandedness] = useState('right');
   const [copyMsg, setCopyMsg] = useState('');
   const { id } = useParams();
@@ -30,6 +31,10 @@ function Lobby() {
       navigate('/');
     });
 
+    // Handle game ongoing
+    socket.on('game-ongoing', () => {
+      setGameOngoingMsg('A game is ongoing. Please wait for the next round.');
+    });
     // When host starts game, grab roundDuration & handedness, then navigate
     socket.on('start-game', ({ roundDuration }) => {
       console.log('Received start-game event:', { roundDuration });
@@ -39,6 +44,7 @@ function Lobby() {
     return () => {
       socket.off('lobby-update');
       socket.off('start-game');
+      socket.off('game-ongoing');
     };
   }, [id, navigate, handedness]);
 
@@ -50,6 +56,11 @@ function Lobby() {
   return (
     <div className="p-4">
       <h1>Lobby {id}</h1>
+      {gameOngoingMsg && (
+        <div className="mb-2 p-2 bg-yellow-200 text-yellow-900 rounded">
+          {gameOngoingMsg}
+        </div>
+      )}
       {isHost && (
         <div className="mb-2">
           <button
