@@ -2,8 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { MiniWebcamFeed, MiniRemoteWebcam } from './MiniWebcamFeed';
 import { useParams, useNavigate } from 'react-router-dom';
 import socket from '../socket';
+import { AiOutlineQuestionCircle } from 'react-icons/ai';
+import HowToPlayModal from './HowToPlayModal';
 
 function Lobby() {
+  const [showHowTo, setShowHowTo] = useState(false);
   const [joined, setJoined] = useState(false);
   const [loading, setLoading] = useState(true);
   const [invalid, setInvalid] = useState(false);
@@ -150,28 +153,38 @@ function Lobby() {
       )}
 
 
-      <div className="mt-6 flex gap-6 items-center justify-center">
-        <label className="flex items-center gap-2 cursor-pointer title-font">
-          <input
-            type="radio"
-            value="right"
-            checked={handedness === 'right'}
-            onChange={() => setHandedness('right')}
-            className="accent-[#fad2e1] w-4 h-4"
-          />
-          Right‑hand dominant
-        </label>
-        <label className="flex items-center gap-2 cursor-pointer title-font">
-          <input
-            type="radio"
-            value="left"
-            checked={handedness === 'left'}
-            onChange={() => setHandedness('left')}
-            className="accent-[#bee1e6] w-4 h-4"
-          />
-          Left‑hand dominant
-        </label>
-      </div>
+       <div className="mt-6 flex gap-6 items-center justify-center">
+         <label className="flex items-center gap-2 cursor-pointer title-font">
+           <input
+             type="radio"
+             value="right"
+             checked={handedness === 'right'}
+             onChange={() => setHandedness('right')}
+             className="accent-[#fad2e1] w-4 h-4"
+           />
+           Right‑hand dominant
+         </label>
+         <label className="flex items-center gap-2 cursor-pointer title-font">
+           <input
+             type="radio"
+             value="left"
+             checked={handedness === 'left'}
+             onChange={() => setHandedness('left')}
+             className="accent-[#bee1e6] w-4 h-4"
+           />
+           Left‑hand dominant
+         </label>
+         <button
+           type="button"
+           aria-label="How To Play"
+           className="ml-2 text-[#a685e2] hover:text-[#f28482] focus:outline-none focus:ring-2 focus:ring-[#fad2e1] rounded-full p-1 transition"
+           onClick={() => setShowHowTo(true)}
+         >
+           <AiOutlineQuestionCircle className="text-2xl align-middle" />
+         </button>
+       </div>
+
+       <HowToPlayModal open={showHowTo} onClose={() => setShowHowTo(false)} />
 
       {isHost && (
         <div className="mt-6 w-full flex flex-col items-center">
