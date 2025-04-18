@@ -4,6 +4,7 @@ import socket from '../socket';
 
 function Lobby() {
   const [handedness, setHandedness] = useState('right');
+  const [copyMsg, setCopyMsg] = useState('');
   const { id } = useParams();
   const [players, setPlayers] = useState([]);
   const [roundDuration, setRoundDuration] = useState('15');
@@ -49,6 +50,21 @@ function Lobby() {
   return (
     <div className="p-4">
       <h1>Lobby {id}</h1>
+      {isHost && (
+        <div className="mb-2">
+          <button
+            className="btn btn-sm"
+            onClick={async () => {
+              await navigator.clipboard.writeText(window.location.origin + '/lobby/' + id);
+              setCopyMsg('Link copied!');
+              setTimeout(() => setCopyMsg(''), 1500);
+            }}
+          >
+            Copy link
+          </button>
+          {copyMsg && <span className="ml-2 text-green-600">{copyMsg}</span>}
+        </div>
+      )}
       <ul>
         {playerList.map(p => (
           <li key={p.id}>
