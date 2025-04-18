@@ -73,6 +73,7 @@ io.on('connection', socket => {
     // Assign default nickname if blank/undefined
     let finalNickname = nickname && nickname.trim() ? nickname : `Player-${socket.id.slice(0, 4)}`;
     socketToNickname[socket.id] = finalNickname;
+    socketToLobby[socket.id] = lobbyId; // <-- Fix: track which lobby this socket is in
     ack(true);
     // Send an array of { id, nickname } objects
     const playerList = activeLobbies[lobbyId].players.map(id => ({ id, nickname: socketToNickname[id] || id }));
@@ -210,13 +211,22 @@ io.on('connection', socket => {
     const lobbyId = socketToLobby[socket.id];
     if (lobbyId && activeLobbies[lobbyId]) {
       // Remove player from lobby
-      activeLobbies[lobbyId].players = activeLobbies[lobbyId].players.filter(id => id !== socket.id);
+      const lobby = activeLobbies[lobbyId];
+      const wasHost = lobby.players[0] === socket.id;
+      lobby.players = lobby.players.filter(id => id !== socket.id);
+
       // If lobby is empty, delete it
-      if (activeLobbies[lobbyId].players.length === 0) {
+      if (lobby.players.length === 0) {
         delete activeLobbies[lobbyId];
       } else {
-        // Otherwise, update the lobby for remaining players
-        const playerList = activeLobbies[lobbyId].players.map(id => ({ id, nickname: socketToNickname[id] || id }));
+        // If host left, promote next player to host
+        if (wasHost) {
+          // Optionally, notify new host (not required for basic functionality)
+          const newHostId = lobby.players[0];
+          io.to(newHostId).emit('host-promoted');
+        }
+        // Update the lobby for remaining players
+        const playerList = lobby.players.map(id => ({ id, nickname: socketToNickname[id] || id }));
         io.to(lobbyId).emit('lobby-update', playerList);
       }
     }

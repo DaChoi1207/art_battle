@@ -6,6 +6,7 @@ import WebcamFeed from './WebcamFeed';
 import { useLocation } from 'react-router-dom';
 
 export default function GameInterface() {
+  const [players, setPlayers] = useState([]);
   const { state } = useLocation();
   // If you came from Lobby with a handedness, use it; otherwise default.
   const handedness = state?.handedness ?? 'right';
@@ -15,6 +16,27 @@ export default function GameInterface() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState(null);
+
+  // Listen for lobby-update to keep player list in sync (and remove disconnected peers)
+  useEffect(() => {
+    const handleLobbyUpdate = (playerList) => {
+      setPlayers(playerList);
+      // Remove DOM elements for players who have left
+      if (window && document) {
+        const remoteIds = Array.from(document.querySelectorAll('[id^="remote-peer-"]'))
+          .map(el => el.id.replace('remote-peer-', ''));
+        const currentIds = (playerList || []).map(p => p.id);
+        for (const rid of remoteIds) {
+          if (!currentIds.includes(rid)) {
+            const elem = document.getElementById('remote-peer-' + rid);
+            if (elem && elem.parentNode) elem.parentNode.removeChild(elem);
+          }
+        }
+      }
+    };
+    socket.on('lobby-update', handleLobbyUpdate);
+    return () => socket.off('lobby-update', handleLobbyUpdate);
+  }, [id]);
 
   // 1) Listen for the prompt (hosts + late joiners)
   useEffect(() => {
