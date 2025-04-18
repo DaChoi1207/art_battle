@@ -72,28 +72,27 @@ export default function Home() {
       />
       <div
       className="
-        min-h-screen
-        flex items-center justify-center
-        bg-[linear-gradient(135deg,_var(--color-bg)_0%,_var(--color-primary)_40%,_var(--color-accent-1)_100%)]
+        min-h-screen w-full flex items-center justify-center
+        bg-gradient-to-br from-[#f0efeb] via-[#cddafd] to-[#fad2e1]
         px-4
       "
     >
       <div
         className="
           w-full max-w-md
-          bg-[var(--color-bg-card)] backdrop-blur-sm
+          bg-white/80 backdrop-blur-sm
           rounded-3xl shadow-2xl
           p-8
           flex flex-col items-center
           space-y-6
-          border-2 border-[var(--color-border)]
+          border-2 border-[#e2ece9]
         "
       >
         {/* Logo */}
         <div
           className="
             w-24 h-24
-            rounded-full bg-[var(--color-accent-2)]
+            rounded-full bg-[#bee1e6]
             flex items-center justify-center
             shadow-inner
           "
@@ -121,7 +120,7 @@ export default function Home() {
             onChange={e => setNickname(e.target.value)}
             className="
               w-full title-font tracking-wide
-              bg-white border-2 border-[var(--color-accent-2)]
+              bg-white border-2 border-[#e2ece9]
               focus:border-[#bfc9d1] focus:ring-2 focus:ring-[#e2ece9]/60
               text-lg py-3 px-4
               rounded-full
@@ -175,7 +174,7 @@ export default function Home() {
             onChange={e => setCode(e.target.value)}
             className="
               flex-1 title-font tracking-wide
-              bg-white border-2 border-[var(--color-accent-2)]
+              bg-white border-2 border-[#e2ece9]
               focus:border-[#bfc9d1] focus:ring-2 focus:ring-[#e2ece9]/60
               text-lg py-3 px-4
               rounded-full

@@ -88,34 +88,37 @@ function Lobby() {
   if (!joined) return null;
 
   return (
-    <div className="p-4">
-      <h1>Lobby {id}</h1>
-      <div className="mb-4 flex gap-4 flex-wrap">
-        {playerList.map(player => (
-          <div key={player.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 90 }}>
-            {player.id === socket.id ? (
-              webcamEnabled ? <MiniWebcamFeed lobbyId={id} enabled={webcamEnabled} /> : <MiniRemoteWebcam peerId={player.id} lobbyId={id} frame={null} />
-            ) : (
-              <MiniRemoteWebcam peerId={player.id} lobbyId={id} frame={webcamFrames.current[player.id]} />
-            )}
-            <div style={{ fontSize: 13, marginTop: 2 }}>{player.nickname || player.id}</div>
-            {player.id === socket.id && (
-              <button className="btn btn-xs mt-1" onClick={() => setWebcamEnabled(e => !e)}>
-                {webcamEnabled ? 'Turn Off Camera' : 'Turn On Camera'}
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-[#f0efeb] via-[#cddafd] to-[#fad2e1] p-0">
+      <div className="w-full max-w-2xl bg-white/80 rounded-3xl shadow-2xl px-8 py-8 flex flex-col items-center border-2 border-[#e2ece9]">
+        <h1 className="title-font text-3xl font-semibold tracking-wide text-[var(--color-text)] drop-shadow-sm mb-2">Lobby <span className="text-xl font-normal">#{id}</span></h1>
+        <div className="mb-6 flex gap-6 flex-wrap justify-center">
+          {playerList.map(player => (
+            <div key={player.id} className="flex flex-col items-center min-w-[90px] bg-gradient-to-b from-[#bee1e6]/40 to-[#fff1e6]/80 rounded-2xl p-4 shadow-md border border-[#e2ece9]">
+              {player.id === socket.id ? (
+                webcamEnabled ? <MiniWebcamFeed lobbyId={id} enabled={webcamEnabled} /> : <MiniRemoteWebcam peerId={player.id} lobbyId={id} frame={null} />
+              ) : (
+                <MiniRemoteWebcam peerId={player.id} lobbyId={id} frame={webcamFrames.current[player.id]} />
+              )}
+              <div className="title-font text-base mt-2 text-[var(--color-text)]">{player.nickname || player.id}</div>
+              {player.id === socket.id && (
+                <button className="mt-2 px-3 py-1 rounded-full bg-gradient-to-r from-[#cddafd] via-[#bee1e6] to-[#fad2e1] text-[var(--color-text)] text-xs font-semibold shadow hover:from-[#fad2e1] hover:to-[#bee1e6] transition" onClick={() => setWebcamEnabled(e => !e)}>
+                  {webcamEnabled ? 'Turn Off Camera' : 'Turn On Camera'}
+                </button>
+              )}
+              {playerList[0] && player.id === playerList[0].id && <span className="text-xs mt-1 text-[#a685e2] font-bold">Host</span>}
+              {player.id === socket.id && <span className="text-xs mt-1 text-[#f28482]">(You)</span>}
+            </div>
+          ))}
+        </div>
       {gameOngoingMsg && (
-        <div className="mb-2 p-2 bg-yellow-200 text-yellow-900 rounded">
+        <div className="mb-3 px-4 py-2 bg-yellow-100 text-yellow-900 rounded-2xl title-font tracking-wide shadow">
           {gameOngoingMsg}
         </div>
       )}
-      <div className="mb-2 flex items-center gap-4">
-        <span className="text-sm">Room privacy: <b>{isPrivate ? 'Private' : 'Public'}</b></span>
+      <div className="mb-4 flex items-center gap-4">
+        <span className="text-base">Room privacy: <b className="text-[#a685e2]">{isPrivate ? 'Private' : 'Public'}</b></span>
         {isHost && (
-          <label className="flex items-center gap-1 cursor-pointer">
+          <label className="flex items-center gap-2 cursor-pointer text-sm">
             <input
               type="checkbox"
               checked={!isPrivate}
@@ -124,15 +127,16 @@ function Lobby() {
                 setIsPrivate(newPrivate);
                 socket.emit('set-lobby-privacy', id, newPrivate);
               }}
+              className="accent-[#bee1e6] w-4 h-4"
             />
-            <span>{isPrivate ? 'Make Public' : 'Make Private'}</span>
+            <span className="title-font">{isPrivate ? 'Make Public' : 'Make Private'}</span>
           </label>
         )}
       </div>
       {isHost && (
-        <div className="mb-2">
+        <div className="mb-2 flex items-center gap-3">
           <button
-            className="btn btn-sm"
+            className="px-4 py-2 rounded-full bg-gradient-to-r from-[#fad2e1] via-[#fff1e6] to-[#bee1e6] text-[var(--color-text)] font-semibold shadow hover:from-[#bee1e6] hover:to-[#fad2e1] transition"
             onClick={async () => {
               await navigator.clipboard.writeText(window.location.origin + '/lobby/' + id);
               setCopyMsg('Link copied!');
@@ -141,89 +145,72 @@ function Lobby() {
           >
             Copy Invite Link
           </button>
-          {copyMsg && <span className="ml-2 text-green-600">{copyMsg}</span>}
+          {copyMsg && <span className="ml-2 text-green-600 title-font tracking-wide">{copyMsg}</span>}
         </div>
       )}
-      <ul>
-        {playerList.map(p => (
-          <li key={p.id}>
-            {p.nickname || p.id}
-            {p.id === socket.id ? ' (You)' : ''}
-            {playerList[0] && p.id === playerList[0].id ? ' (Host)' : ''}
-            {isHost && p.id !== socket.id && (
-              <button
-                className="ml-2 text-red-600 underline text-xs"
-                onClick={() => {
-                  if (window.confirm(`Kick ${p.nickname || p.id}?`)) {
-                    socket.emit('kick-player', id, p.id);
-                  }
-                }}
-              >
-                Kick
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
 
-      <div className="mt-4">
-        <label>
+
+      <div className="mt-6 flex gap-6 items-center justify-center">
+        <label className="flex items-center gap-2 cursor-pointer title-font">
           <input
             type="radio"
             value="right"
             checked={handedness === 'right'}
             onChange={() => setHandedness('right')}
-          />{' '}
+            className="accent-[#fad2e1] w-4 h-4"
+          />
           Right‑hand dominant
         </label>
-        <label className="ml-4">
+        <label className="flex items-center gap-2 cursor-pointer title-font">
           <input
             type="radio"
             value="left"
             checked={handedness === 'left'}
             onChange={() => setHandedness('left')}
-          />{' '}
+            className="accent-[#bee1e6] w-4 h-4"
+          />
           Left‑hand dominant
         </label>
       </div>
 
       {isHost && (
-        <>
-          <div className="mt-4">
-            <label>
-              Round duration (seconds):
-              <input
-                type="number"
-                min={5}
-                max={1200}
-                value={roundDuration}
-                onChange={e => {
-                  // Allow blank, strip leading zeros
-                  let val = e.target.value.replace(/^0+(?=\d)/, '');
-                  if (val === '' || /^[0-9]*$/.test(val)) {
-                    setRoundDuration(val);
-                  }
-                }}
-                className="input ml-2 w-20"
-              />
-            </label>
-          </div>
+        <div className="mt-6 w-full flex flex-col items-center">
+          <label className="title-font mb-2">
+            Round duration (seconds):
+            <input
+              type="number"
+              min={5}
+              max={1200}
+              value={roundDuration}
+              onChange={e => {
+                let val = e.target.value.replace(/^0+(?=\d)/, '');
+                if (val === '' || /^[0-9]*$/.test(val)) {
+                  setRoundDuration(val);
+                }
+              }}
+              className="ml-3 w-24 px-3 py-2 rounded-full border-2 border-[#e2ece9] focus:border-[#bee1e6] focus:ring-2 focus:ring-[#cddafd]/40 text-base title-font tracking-wide transition bg-white outline-none"
+            />
+          </label>
+          {/* Inline error message for invalid duration */}
+          {roundDuration && (Number(roundDuration) < 5 || Number(roundDuration) > 1200) && (
+            <span className="text-sm text-red-500 mb-2">Please enter a value between 5 and 1200.</span>
+          )}
           <button
             onClick={() => {
-              // Only allow valid durations
               const durationNum = Number(roundDuration);
               if (!durationNum || durationNum < 5 || durationNum > 1200) {
-                alert('Please enter a round duration between 5 and 1200 seconds.');
                 return;
               }
               socket.emit('start-game', id, durationNum);
             }}
-            className="btn mt-4"
+            className="mt-3 px-6 py-2 rounded-full bg-gradient-to-r from-[#bee1e6] via-[#fad2e1] to-[#fff1e6] text-[var(--color-text)] font-semibold shadow hover:from-[#fad2e1] hover:to-[#bee1e6] transition title-font tracking-wide"
+            disabled={!roundDuration || Number(roundDuration) < 5 || Number(roundDuration) > 1200}
           >
             Start Game
           </button>
-        </>
+        </div>
       )}
+      </div>
     </div>
   );
 }
