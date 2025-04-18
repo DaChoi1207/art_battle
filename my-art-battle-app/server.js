@@ -50,25 +50,51 @@ const submittedImages = {};
 io.on('connection', socket => {
   console.log('User connected:', socket.id);
 
-  socket.on('create-lobby', ack => {
+  socket.on('create-lobby', (ack) => {
     const lobbyId = genLobbyId();
     activeLobbies[lobbyId] = { players: [socket.id], prompt: null, dominance: 'right' };
     socket.join(lobbyId);
+    // Assign default nickname if not set
+    if (!socketToNickname[socket.id]) {
+      socketToNickname[socket.id] = `Player-${socket.id.slice(0, 4)}`;
+    }
     ack(lobbyId);
-    io.to(lobbyId).emit('lobby-update', activeLobbies[lobbyId].players);
+    // Send an array of { id, nickname } objects
+    const playerList = activeLobbies[lobbyId].players.map(id => ({ id, nickname: socketToNickname[id] || id }));
+    io.to(lobbyId).emit('lobby-update', playerList);
   });
 
   socket.on('join-lobby', (lobbyId, nickname, ack) => {
-    const lobby = activeLobbies[lobbyId];
-    if (!lobby) return ack(false);
-    if (!lobby.players.includes(socket.id)) {
-      lobby.players.push(socket.id);
+    if (!activeLobbies[lobbyId]) return ack(false);
+    if (!activeLobbies[lobbyId].players.includes(socket.id)) {
+      activeLobbies[lobbyId].players.push(socket.id);
     }
     socket.join(lobbyId);
-    socketToLobby[socket.id] = lobbyId; // Track this socket's lobby
-    socketToNickname[socket.id] = nickname || `Player-${socket.id.slice(0, 5)}`;
+    // Assign default nickname if blank/undefined
+    let finalNickname = nickname && nickname.trim() ? nickname : `Player-${socket.id.slice(0, 4)}`;
+    socketToNickname[socket.id] = finalNickname;
     ack(true);
     // Send an array of { id, nickname } objects
+    const playerList = activeLobbies[lobbyId].players.map(id => ({ id, nickname: socketToNickname[id] || id }));
+    io.to(lobbyId).emit('lobby-update', playerList);
+    console.log(`User ${socket.id} joined room ${lobbyId}`);
+  });
+
+  // Host can kick a player from the lobby
+  socket.on('kick-player', (lobbyId, targetId) => {
+    const lobby = activeLobbies[lobbyId];
+    if (!lobby) return;
+    // Only host can kick
+    if (lobby.players[0] !== socket.id) return;
+    // Don't allow kicking host
+    if (targetId === socket.id) return;
+    // Remove target from lobby
+    lobby.players = lobby.players.filter(id => id !== targetId);
+    // Remove nickname
+    delete socketToNickname[targetId];
+    // Notify the kicked player
+    io.to(targetId).emit('kicked');
+    // Update lobby for others
     const playerList = lobby.players.map(id => ({ id, nickname: socketToNickname[id] || id }));
     io.to(lobbyId).emit('lobby-update', playerList);
   });
@@ -91,7 +117,7 @@ io.on('connection', socket => {
     console.log(`User ${socket.id} joined room ${roomId}`);
   });
 
-  socket.on('start-game', lobbyId => {
+  socket.on('start-game', (lobbyId, roundDuration) => {
     submittedImages[lobbyId] = {};
 
     const lobby = activeLobbies[lobbyId];
@@ -100,8 +126,9 @@ io.on('connection', socket => {
     const prompt = WORD_BANK[Math.floor(Math.random() * WORD_BANK.length)];
     lobby.prompt = prompt;
     lobby.roundStart = Date.now();
-    console.log('Server: emitting start-game to lobby', lobbyId, 'with', { roundDuration: ROUND_DURATION });
-    io.in(lobbyId).emit('start-game', { roundDuration: ROUND_DURATION });
+    const duration = typeof roundDuration === 'number' && !isNaN(roundDuration) ? roundDuration : ROUND_DURATION;
+    console.log('Server: emitting start-game to lobby', lobbyId, 'with', { roundDuration: duration });
+    io.in(lobbyId).emit('start-game', { roundDuration: duration });
     io.in(lobbyId).emit('new-prompt', prompt);
 
     setTimeout(() => {
@@ -131,7 +158,7 @@ io.on('connection', socket => {
           hostId: activeLobbies[lobbyId].players[0]   // ← include true host ID
         });
       }, 3000);
-    }, ROUND_DURATION * 1000);
+    }, duration * 1000);
   });
 
   socket.on('get-prompt', lobbyId => {

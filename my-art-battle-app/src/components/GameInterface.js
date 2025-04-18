@@ -9,6 +9,8 @@ export default function GameInterface() {
   const { state } = useLocation();
   // If you came from Lobby with a handedness, use it; otherwise default.
   const handedness = state?.handedness ?? 'right';
+  const initialDuration = state?.roundDuration ?? 15;
+  const [roundDuration, setRoundDuration] = useState(initialDuration);
   console.log('GameInterface: handedness from location.state:', state?.handedness, 'final:', handedness);
   const { id } = useParams();
   const navigate = useNavigate();
@@ -23,14 +25,14 @@ export default function GameInterface() {
     };
   }, [id]);
 
-  // Listen for start-game to capture handedness/dominance
-  // useEffect(() => {
-  //   const handler = ({ roundDuration, dominance }) => {
-  //     if (dominance) setDominance(dominance);
-  //   };
-  //   socket.on('start-game', handler);
-  //   return () => socket.off('start-game', handler);
-  // }, [id]);
+  // Listen for start-game to update roundDuration if server sends it (for late joiners)
+  useEffect(() => {
+    const handler = ({ roundDuration }) => {
+      if (roundDuration) setRoundDuration(roundDuration);
+    };
+    socket.on('start-game', handler);
+    return () => socket.off('start-game', handler);
+  }, [id]);
 
   // 2) When the round is over, clean up socket listeners and navigate to the gallery
   useEffect(() => {
@@ -65,7 +67,8 @@ export default function GameInterface() {
   return (
     <div className="p-4">
       <div className="mb-4 p-2 bg-yellow-100 rounded text-xl font-bold text-center">
-        Draw this: <span className="text-blue-600">{prompt}</span>
+        Draw this: <span className="text-blue-600">{prompt}</span><br />
+        <span className="text-gray-600 text-base">Round duration: {roundDuration} seconds</span>
       </div>
       <WebcamFeed roomId={id} dominance={handedness} />
     </div>

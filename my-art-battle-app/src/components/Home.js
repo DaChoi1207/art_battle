@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import socket from '../socket';
 
@@ -8,25 +8,30 @@ function Home() {
   const navigate = useNavigate();
 
   const create = () => {
-    if (!nickname.trim()) {
-      alert('Please enter a nickname');
-      return;
-    }
+    // Nickname is optional; if blank, pass undefined
     socket.emit('create-lobby', (lobbyId) => {
-      navigate(`/lobby/${lobbyId}`, { state: { nickname } });
+      navigate(`/lobby/${lobbyId}`, { state: { nickname: nickname.trim() || undefined } });
     });
   };
 
   const join = () => {
-    if (!nickname.trim()) {
-      alert('Please enter a nickname');
-      return;
-    }
-    socket.emit('join-lobby', code, nickname, (ok) => {
-      if (ok) navigate(`/lobby/${code}`, { state: { nickname } });
+    // Nickname is optional; if blank, pass undefined
+    socket.emit('join-lobby', code, nickname.trim() || undefined, (ok) => {
+      if (ok) navigate(`/lobby/${code}`, { state: { nickname: nickname.trim() || undefined } });
       else alert('Invalid code');
     });
   };
+
+  // Listen for kicked event
+  useEffect(() => {
+    const handler = () => {
+      setNickname('');
+      alert('You have been kicked from the lobby.');
+      navigate('/');
+    };
+    socket.on('kicked', handler);
+    return () => socket.off('kicked', handler);
+  }, [navigate]);
 
   return (
     <div className="p-4">

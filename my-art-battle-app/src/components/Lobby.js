@@ -6,6 +6,7 @@ function Lobby() {
   const [handedness, setHandedness] = useState('right');
   const { id } = useParams();
   const [players, setPlayers] = useState([]);
+  const [roundDuration, setRoundDuration] = useState('15');
   const navigate = useNavigate();
   const nickname = (typeof window !== 'undefined' && window.history.state && window.history.state.usr && window.history.state.usr.nickname) || '';
   
@@ -21,6 +22,12 @@ function Lobby() {
 
     // Update player list
     socket.on('lobby-update', setPlayers);
+
+    // Handle being kicked
+    socket.on('kicked', () => {
+      alert('You have been kicked from the lobby.');
+      navigate('/');
+    });
 
     // When host starts game, grab roundDuration & handedness, then navigate
     socket.on('start-game', ({ roundDuration }) => {
@@ -48,6 +55,18 @@ function Lobby() {
             {p.nickname || p.id}
             {p.id === socket.id ? ' (You)' : ''}
             {playerList[0] && p.id === playerList[0].id ? ' (Host)' : ''}
+            {isHost && p.id !== socket.id && (
+              <button
+                className="ml-2 text-red-600 underline text-xs"
+                onClick={() => {
+                  if (window.confirm(`Kick ${p.nickname || p.id}?`)) {
+                    socket.emit('kick-player', id, p.id);
+                  }
+                }}
+              >
+                Kick
+              </button>
+            )}
           </li>
         ))}
       </ul>
@@ -74,16 +93,41 @@ function Lobby() {
       </div>
 
       {isHost && (
-        <button
-          onClick={() => {
-            // Send handedness to server before starting game
-            // Just start the game. We'll pass handedness locally.
-            socket.emit('start-game', id);
-          }}
-          className="btn mt-4"
-        >
-          Start Game
-        </button>
+        <>
+          <div className="mt-4">
+            <label>
+              Round duration (seconds):
+              <input
+                type="number"
+                min={5}
+                max={1200}
+                value={roundDuration}
+                onChange={e => {
+                  // Allow blank, strip leading zeros
+                  let val = e.target.value.replace(/^0+(?=\d)/, '');
+                  if (val === '' || /^[0-9]*$/.test(val)) {
+                    setRoundDuration(val);
+                  }
+                }}
+                className="input ml-2 w-20"
+              />
+            </label>
+          </div>
+          <button
+            onClick={() => {
+              // Only allow valid durations
+              const durationNum = Number(roundDuration);
+              if (!durationNum || durationNum < 5 || durationNum > 1200) {
+                alert('Please enter a round duration between 5 and 1200 seconds.');
+                return;
+              }
+              socket.emit('start-game', id, durationNum);
+            }}
+            className="btn mt-4"
+          >
+            Start Game
+          </button>
+        </>
       )}
     </div>
   );
