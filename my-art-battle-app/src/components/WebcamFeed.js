@@ -363,8 +363,9 @@ useEffect(() => {
           const index = rightHandLandmarks[8];
           const dx = (thumb.x - index.x) * canvas.width;
           const dy = (thumb.y - index.y) * canvas.height;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          brushSizeRef.current = Math.max(4, Math.min(distance, 40));
+          const rawDistance = Math.sqrt(dx * dx + dy * dy);
+          const adjustedDistance = Math.max(0, rawDistance - 20) * 0.6; // Subtract 20px offset, then slow growth
+          brushSizeRef.current = Math.max(2, Math.min(adjustedDistance, 40));
 
           const thumbX = canvas.width - (thumb.x * canvas.width);
           const thumbY = thumb.y * canvas.height;
