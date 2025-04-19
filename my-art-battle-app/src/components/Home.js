@@ -81,7 +81,7 @@ export default function Home() {
           <button
             onClick={() => setShowHowTo(true)}
             type="button"
-            className="absolute left-0 top-0 -translate-x-1/3 -translate-y-1/3 -rotate-[36deg] bg-gradient-to-r from-[#fad2e1] via-[#bee1e6] to-[#fff1e6] text-[#a685e2] px-5 py-2 rounded-[1.5rem] border-2 border-[#e2ece9] shadow-xl drop-shadow text-lg font-extrabold tracking-wide title-font scale-y-105 scale-x-100 select-none transition-all duration-200 hover:scale-110 hover:shadow-[0_4px_16px_0_rgba(250,210,225,0.5)] hover:border-[#fad2e1] focus:outline-none focus:ring-2 focus:ring-[#fad2e1] focus:ring-opacity-50"
+            className="absolute left-0 top-0 -translate-x-1/3 -translate-y-1/3 -rotate-[36deg] bg-gradient-to-r from-[#fad2e1] via-[#bee1e6] to-[#fff1e6] text-black px-5 py-2 rounded-[1.5rem] border-2 border-[#e2ece9] shadow-xl drop-shadow text-lg font-extrabold tracking-wide title-font scale-y-105 scale-x-100 select-none transition-all duration-200 hover:scale-110 hover:shadow-[0_4px_16px_0_rgba(250,210,225,0.5)] hover:border-[#fad2e1] focus:outline-none focus:ring-2 focus:ring-[#fad2e1] focus:ring-opacity-50"
             style={{ zIndex: 10, textShadow: '0 2px 6px #fff, 0 1px 0 #fff' }}
           >
             How To Play?

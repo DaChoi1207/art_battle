@@ -174,7 +174,9 @@ io.on('connection', socket => {
     const prompt = WORD_BANK[Math.floor(Math.random() * WORD_BANK.length)];
     lobby.prompt = prompt;
     lobby.roundStart = Date.now();
-    const duration = typeof roundDuration === 'number' && !isNaN(roundDuration) ? roundDuration : ROUND_DURATION;
+    const parsedDuration = Number(roundDuration);
+    const duration = !isNaN(parsedDuration) && parsedDuration > 0 ? parsedDuration : ROUND_DURATION;
+    lobby.roundDuration = duration; // Store the chosen duration on the lobby
     console.log('Server: emitting start-game to lobby', lobbyId, 'with', { roundDuration: duration });
     io.in(lobbyId).emit('start-game', { roundDuration: duration });
     io.in(lobbyId).emit('new-prompt', prompt);
@@ -220,7 +222,8 @@ io.on('connection', socket => {
     const lobby = activeLobbies[lobbyId];
     if (lobby && lobby.roundStart) {
       const elapsed = Math.floor((Date.now() - lobby.roundStart) / 1000);
-      const timeLeft = Math.max(0, ROUND_DURATION - elapsed);
+      const duration = (lobby && lobby.roundDuration) ? lobby.roundDuration : ROUND_DURATION;
+      const timeLeft = Math.max(0, duration - elapsed);
       cb({ timeLeft });
     } else {
       cb({ timeLeft: null });

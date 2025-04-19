@@ -16,6 +16,7 @@ export default function GameInterface() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState(null);
+  const [invalid, setInvalid] = useState(false);
 
   // Listen for lobby-update to keep player list in sync (and remove disconnected peers)
   useEffect(() => {
@@ -40,12 +41,20 @@ export default function GameInterface() {
 
   // 1) Listen for the prompt (hosts + late joiners)
   useEffect(() => {
-    socket.on('new-prompt', setPrompt);
+    const handlePrompt = (prompt) => {
+      if (!prompt) {
+        setInvalid(true);
+        setTimeout(() => navigate('/'), 1800);
+      } else {
+        setPrompt(prompt);
+      }
+    };
+    socket.on('new-prompt', handlePrompt);
     socket.emit('get-prompt', id);
     return () => {
-      socket.off('new-prompt', setPrompt);
+      socket.off('new-prompt', handlePrompt);
     };
-  }, [id]);
+  }, [id, navigate]);
 
   // Listen for start-game to update roundDuration if server sends it (for late joiners)
   useEffect(() => {
@@ -77,6 +86,13 @@ export default function GameInterface() {
   }, [id, navigate]);
 
   // 3) Render a waiting message until we have a prompt
+  if (invalid) {
+    return (
+      <div className="p-6 text-center text-[#a685e2] title-font text-xl font-semibold">
+        Invalid game code. Redirecting...
+      </div>
+    );
+  }
   if (!prompt) {
     return (
       <div className="p-4 text-center">
