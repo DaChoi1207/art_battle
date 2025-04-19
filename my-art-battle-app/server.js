@@ -205,7 +205,9 @@ io.on('connection', socket => {
         io.in(lobbyId).emit('show-gallery', {
           artworks,
           winner,
-          hostId: activeLobbies[lobbyId].players[0]   // ← include true host ID
+          hostId: (activeLobbies[lobbyId] && Array.isArray(activeLobbies[lobbyId].players) && activeLobbies[lobbyId].players.length > 0)
+            ? activeLobbies[lobbyId].players[0]
+            : null // ← include true host ID safely
         });
       }, 3000);
     }, duration * 1000);
