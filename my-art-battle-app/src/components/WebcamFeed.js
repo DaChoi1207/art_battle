@@ -34,9 +34,6 @@ function WebcamFeed({ roomId, dominance = 'right' }) {
   const intervalRef = useRef(null);
 
   // Helper: Get (or create) the remote container for a given peer.
-  // State for popup
-  const [enlargedPeerId, setEnlargedPeerId] = useState(null);
-
   function getOrCreateRemoteContainer(peerId) {
     const parent = document.getElementById('remote-container');
     if (!parent) {
@@ -59,8 +56,6 @@ function WebcamFeed({ roomId, dominance = 'right' }) {
       container.style.display = 'flex';
       container.style.alignItems = 'center';
       container.style.justifyContent = 'center';
-      container.style.cursor = 'pointer';
-      container.onclick = () => setEnlargedPeerId(peerId);
       
       // 1) Video element
       const videoElem = document.createElement('img');
@@ -477,46 +472,7 @@ function WebcamFeed({ roomId, dominance = 'right' }) {
       <div id="remote-container" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '12px', alignItems: 'center', minHeight: '100px' }}>
         {/* Remote tiles will be injected here. Ensure they are styled as small tiles. */}
       </div>
-    {/* Enlarged remote webcam popup */}
-    {enlargedPeerId && (
-      <div
-        style={{
-          position: 'fixed', zIndex: 1000, left: 0, top: 0, width: '100vw', height: '100vh',
-          background: 'rgba(24,24,37,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}
-        onClick={() => setEnlargedPeerId(null)}
-      >
-        <div
-          style={{ position: 'relative', width: 640, height: 480, background: '#232136', borderRadius: 16, boxShadow: '0 4px 32px #111a', overflow: 'hidden', border: '3px solid #b4befe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={e => e.stopPropagation()}
-        >
-          {/* Show the enlarged remote video and drawing canvas */}
-          <img
-            id={`popup-remote-video-${enlargedPeerId}`}
-            src={document.getElementById(`remote-video-${enlargedPeerId}`)?.src || ''}
-            alt={`peer ${enlargedPeerId}`}
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', background: '#111', zIndex: 1 }}
-          />
-          {/* Drawing overlay: clone the remote canvas as an image for the popup */}
-          <img
-            id={`popup-remote-drawing-${enlargedPeerId}`}
-            src={(() => {
-              const canvas = document.getElementById(`remote-drawing-${enlargedPeerId}`);
-              return canvas ? canvas.toDataURL('image/png') : '';
-            })()}
-            alt="drawing overlay"
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2 }}
-          />
-          {/* Close button */}
-          <button
-            style={{ position: 'absolute', top: 10, right: 10, background: '#45475a', color: '#f5e0dc', border: 'none', borderRadius: 20, width: 32, height: 32, fontSize: 18, cursor: 'pointer', zIndex: 3 }}
-            onClick={() => setEnlargedPeerId(null)}
-          >✕</button>
-          <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', background: 'rgba(24,24,37,0.85)', color: '#b4befe', fontSize: 16, padding: '4px 0', textAlign: 'center', letterSpacing: 1 }}>{enlargedPeerId}</div>
-        </div>
-      </div>
-    )}
-  </div>
+    </div>
   );
 }
 

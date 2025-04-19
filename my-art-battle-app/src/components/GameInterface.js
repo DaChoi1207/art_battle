@@ -62,6 +62,8 @@ export default function GameInterface() {
       if (roundDuration) setRoundDuration(roundDuration);
     };
     socket.on('start-game', handler);
+    // If we navigated from lobby, the event will fire immediately
+    // If we navigated from gallery, it will fire on play again
     return () => socket.off('start-game', handler);
   }, [id]);
 
@@ -75,8 +77,8 @@ export default function GameInterface() {
       socket.off('start-game');
       socket.off('game-over');
 
-      // navigate and pass along the hostId
-      navigate(`/gallery/${id}`, { state: { artworks, winner, hostId } });
+      // navigate and pass along the hostId and roundDuration
+      navigate(`/gallery/${id}`, { state: { artworks, winner, hostId, roundDuration } });
     };
 
     socket.on('show-gallery', handleShowGallery);
@@ -105,8 +107,7 @@ export default function GameInterface() {
   return (
     <div className="p-4">
       <div className="mb-4 p-2 bg-yellow-100 rounded text-xl font-bold text-center">
-        Draw this: <span className="text-blue-600">{prompt}</span><br />
-        <span className="text-gray-600 text-base">Round duration: {roundDuration} seconds</span>
+        Drawing Prompt! <span className="text-blue-600">{prompt}</span><br />
       </div>
       <WebcamFeed roomId={id} dominance={handedness} />
     </div>

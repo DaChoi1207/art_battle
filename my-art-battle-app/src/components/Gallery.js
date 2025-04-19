@@ -5,18 +5,22 @@ import socket from '../socket';
 export default function Gallery() {
   const { id } = useParams();
   const navigate = useNavigate();
+
+  // Pull artworks, winner, hostId, and roundDuration out of location.state
   const {
     artworks = {},
-    winner = null,
-    hostId = null
+    winner   = null,
+    hostId   = null,
+    roundDuration: durationFromState = null,
   } = useLocation().state || {};
 
-  const isHost = socket.id === hostId;
+  // If we got a duration passed in, use it; otherwise default to 15s
+  const roundDuration = durationFromState ?? 15;
 
-  // Listen for the server's 'start-game' broadcast and navigate everyone back to /game/:id
+  // When the server emits start-game, navigate back to /game with our duration
   useEffect(() => {
-    const onStartGame = () => {
-      navigate(`/game/${id}`);
+    const onStartGame = ({ roundDuration }) => {
+      navigate(`/game/${id}`, { state: { roundDuration } });
     };
     socket.on('start-game', onStartGame);
     return () => {
@@ -24,9 +28,11 @@ export default function Gallery() {
     };
   }, [id, navigate]);
 
+  const isHost = socket.id === hostId;
+
+  // Host clicks “Play Again” → re‑emit the same duration the gallery was using
   const handlePlayAgain = () => {
-    // Only emit — navigation will happen when 'start-game' arrives
-    socket.emit('start-game', id);
+    socket.emit('start-game', id, roundDuration);
   };
 
   return (
@@ -46,10 +52,7 @@ export default function Gallery() {
       </div>
 
       {isHost && (
-        <button
-          className="mt-6 btn"
-          onClick={handlePlayAgain}
-        >
+        <button className="mt-6 btn" onClick={handlePlayAgain}>
           Play Again
         </button>
       )}
