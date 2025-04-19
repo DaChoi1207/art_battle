@@ -13,7 +13,7 @@ import ColorPopover from './ColorPopover';
 //   console.log('Joined room:', roomId);
 // });
 
-function WebcamFeed({ roomId, dominance = 'right' }) {
+function WebcamFeed({ roomId, dominance = 'right', setTimeLeft: setTimeLeftParent, setGameOver: setGameOverParent }) {
   console.log('WebcamFeed: received dominance prop:', dominance);
   const drawHand = dominance === 'right' ? 'Right' : 'Left';
   const modeHand = dominance === 'right' ? 'Left' : 'Right';
@@ -72,6 +72,14 @@ useEffect(() => {
   // Timer state
   const [timeLeft, setTimeLeft] = useState(null);
   const [gameOver, setGameOver] = useState(false);
+
+  // Sync timer/gameOver state to parent if callback provided
+  useEffect(() => {
+    if (typeof setTimeLeftParent === 'function') setTimeLeftParent(timeLeft);
+  }, [timeLeft, setTimeLeftParent]);
+  useEffect(() => {
+    if (typeof setGameOverParent === 'function') setGameOverParent(gameOver);
+  }, [gameOver, setGameOverParent]);
   const intervalRef = useRef(null);
 
   // Helper: Get (or create) the remote container for a given peer.
@@ -585,19 +593,7 @@ useEffect(() => {
         </div>
         <div className="text-xs mt-1 text-[#a685e2] font-medium">Tip: Gestures are used to <b>swap</b> between colors.</div>
       </div>
-      {/* Timer and Status */}
-      <div className="w-full flex justify-center gap-6 mb-2">
-        {timeLeft !== null && !gameOver && (
-          <div className="bg-[#cddafd] text-[#232136] font-bold px-4 py-2 rounded-xl shadow text-lg flex items-center gap-2">
-            <span role="img" aria-label="timer">⏰</span> Time left: {timeLeft}s
-          </div>
-        )}
-        {gameOver && (
-          <div className="bg-[#fad2e1] text-[#b80c09] font-extrabold px-4 py-2 rounded-xl shadow text-lg flex items-center gap-2 animate-pulse">
-            <span role="img" aria-label="game over">🏁</span> Game Over!
-          </div>
-        )}
-      </div>
+
 
       {/* Drawing Canvas + Video Feed */}
       <div className="flex flex-col md:flex-row gap-8 w-full justify-center items-start">

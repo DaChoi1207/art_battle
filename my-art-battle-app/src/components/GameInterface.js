@@ -3,9 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import socket from '../socket';
 import WebcamFeed from './WebcamFeed';
+import TimerDisplay from './TimerDisplay';
 import { useLocation } from 'react-router-dom';
 
 export default function GameInterface() {
+  const [timeLeft, setTimeLeft] = useState(null);
+  const [gameOver, setGameOver] = useState(false);
   const [players, setPlayers] = useState([]);
   const { state } = useLocation();
   // If you came from Lobby with a handedness, use it; otherwise default.
@@ -113,16 +116,14 @@ export default function GameInterface() {
           Drawing Prompt:
           <span className="ml-2 text-[#3b3561] bg-yellow-100 rounded-lg px-3 py-1 font-extrabold shadow-sm text-2xl">{prompt}</span>
         </div>
-        <div className="text-lg font-semibold text-[#232136] bg-[#cddafd]/80 px-4 py-2 rounded-xl shadow">
-          <span role="img" aria-label="timer">⏰</span> {roundDuration} sec
-        </div>
+        <TimerDisplay timeLeft={timeLeft} gameOver={gameOver} />
       </div>
 
       {/* Main Area: Drawing + Video Grid */}
       <div className="flex-1 flex flex-col md:flex-row gap-8 px-6 py-6 max-w-7xl mx-auto w-full">
         {/* Drawing Canvas Area */}
         <div className="flex-1 flex flex-col items-center justify-center bg-white/80 rounded-3xl shadow-xl border-2 border-[#e2ece9] p-6 min-w-[350px]">
-          <WebcamFeed roomId={id} dominance={handedness} />
+          <WebcamFeed roomId={id} dominance={handedness} setTimeLeft={setTimeLeft} setGameOver={setGameOver} />
         </div>
         {/* Video Call Grid Area (remote-container will be rendered inside WebcamFeed) */}
         {/* Optionally, you could move the remote-container here if you refactor WebcamFeed */}
