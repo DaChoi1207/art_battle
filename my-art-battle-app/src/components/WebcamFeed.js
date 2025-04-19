@@ -450,27 +450,44 @@ function WebcamFeed({ roomId, dominance = 'right' }) {
   }, [roomId, dominance]);
 
   return (
-    <div>
-      <h2>Your Camera</h2>
-      {timeLeft !== null && !gameOver && (
-        <div className="timer">
-          Time left: {timeLeft} seconds
-        </div>
-      )}
-      {gameOver && (
-        <div className="timer" style={{ color: 'red', fontWeight: 'bold' }}>
-          Game Over!
-        </div>
-      )}
-
-      <div id="local-container" style={{ position: 'relative', width: 640, height: 480, marginBottom: '20px' }}>
-        <video ref={videoRef} style={{ display: 'none' }} width={640} height={480} autoPlay />
-        <canvas ref={canvasRef} width={640} height={480} style={{ border: '1px solid #333', position: 'absolute', top: 0, left: 0 }} />
-        <canvas ref={drawingCanvasRef} width={640} height={480} style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} />
+    <div className="w-full flex flex-col items-center">
+      {/* Timer and Status */}
+      <div className="w-full flex justify-center gap-6 mb-2">
+        {timeLeft !== null && !gameOver && (
+          <div className="bg-[#cddafd] text-[#232136] font-bold px-4 py-2 rounded-xl shadow text-lg flex items-center gap-2">
+            <span role="img" aria-label="timer">⏰</span> Time left: {timeLeft}s
+          </div>
+        )}
+        {gameOver && (
+          <div className="bg-[#fad2e1] text-[#b80c09] font-extrabold px-4 py-2 rounded-xl shadow text-lg flex items-center gap-2 animate-pulse">
+            <span role="img" aria-label="game over">🏁</span> Game Over!
+          </div>
+        )}
       </div>
-      <h2>Other Players</h2>
-      <div id="remote-container" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '12px', alignItems: 'center', minHeight: '100px' }}>
-        {/* Remote tiles will be injected here. Ensure they are styled as small tiles. */}
+
+      {/* Drawing Canvas + Video Feed */}
+      <div className="flex flex-col md:flex-row gap-8 w-full justify-center items-start">
+        {/* Drawing Canvas Area */}
+        <div className="relative flex flex-col items-center justify-center bg-gradient-to-br from-[#fff1e6]/80 via-[#cddafd]/80 to-[#bee1e6]/80 rounded-2xl shadow-lg border-2 border-[#e2ece9] p-4 mb-4 md:mb-0" style={{ width: 660, minHeight: 500 }}>
+          <div className="text-[#5b5f97] font-bold mb-2 text-lg flex items-center gap-2">
+            <span role="img" aria-label="you">🖌️</span> Your Drawing Canvas
+          </div>
+          <div className="relative" style={{ width: 640, height: 480 }}>
+            <video ref={videoRef} style={{ display: 'none' }} width={640} height={480} autoPlay />
+            <canvas ref={canvasRef} width={640} height={480} className="rounded-xl border-2 border-[#b8c1ec] shadow-md" style={{ position: 'absolute', top: 0, left: 0 }} />
+            <canvas ref={drawingCanvasRef} width={640} height={480} className="rounded-xl" style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} />
+          </div>
+        </div>
+
+        {/* Video Call Grid for Other Players */}
+        <div className="flex-1 flex flex-col items-center">
+          <div className="text-[#5b5f97] font-bold mb-2 text-lg flex items-center gap-2">
+            <span role="img" aria-label="peers">🧑‍🤝‍🧑</span> Other Players
+          </div>
+          <div id="remote-container" className="grid grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-xl min-h-[200px]">
+            {/* Remote tiles will be injected here. Styled as small video/drawing tiles. */}
+          </div>
+        </div>
       </div>
     </div>
   );
