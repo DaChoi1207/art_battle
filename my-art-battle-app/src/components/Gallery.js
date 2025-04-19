@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import socket from '../socket';
+import GalleryVoting from './GalleryVoting';
 
 const PALETTE = [
   '#e63946', '#457b9d', '#f1faee', '#ffbe0b', '#8338ec', '#cddafd', '#bee1e6', '#b8c1ec'
@@ -14,11 +15,14 @@ export default function Gallery() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [liked, setLiked] = useState({});
+  const [votingDone, setVotingDone] = useState(false);
+  const [votes, setVotes] = useState(null); // { playerId: [ratings...] }
+  const [winnerId, setWinnerId] = useState(null);
 
   // Pull artworks, winner, hostId, and roundDuration out of location.state
   const {
     artworks = {},
-    winner   = null,
+    winner: winnerFromState = null,
     hostId   = null,
     roundDuration: durationFromState = null,
   } = useLocation().state || {};
@@ -38,12 +42,39 @@ export default function Gallery() {
   const isHost = socket.id === hostId;
 
   const handlePlayAgain = () => {
+    // Emit clear-canvas to everyone in the room before starting the new round
+    socket.emit('clear-canvas', id);
     socket.emit('start-game', id, roundDuration);
   };
 
   const handleLike = (playerId) => {
     setLiked(like => ({ ...like, [playerId]: !like[playerId] }));
   };
+
+  // Voting logic: handle multiplayer voting results
+  const handleVotingComplete = (result) => {
+    // result: { winner, tallies }
+    if (result && result.winner) {
+      setWinnerId(result.winner);
+      setVotes(result.tallies);
+      setVotingDone(true);
+    }
+  };
+
+  // If voting not done and no winner, show voting scene
+  const hasRealWinner = winnerFromState && Object.keys(artworks).includes(winnerFromState);
+  if (!votingDone && !hasRealWinner) {
+    return (
+      <GalleryVoting
+        artworks={artworks}
+        localUserId={socket.id}
+        onComplete={handleVotingComplete}
+      />
+    );
+  }
+
+  // Winner: from voting or state
+  const winner = winnerFromState || winnerId;
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-start bg-gradient-to-br from-[#fff1e6] via-[#cddafd] to-[#bee1e6] py-8 px-2">
@@ -97,3 +128,4 @@ export default function Gallery() {
     </div>
   );
 }
+

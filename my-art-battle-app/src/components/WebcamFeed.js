@@ -154,25 +154,34 @@ useEffect(() => {
   useEffect(() => {
     // Drawing SYNC: On mount, request all peer drawings and render them
     socket.emit('request-drawing-sync', roomId, (allDrawings) => {
-      // allDrawings: { peerId: [ {from,to,color,thickness} ] }
+      // 1) Clear *every* remote overlay before re‑drawing
+      Object.values(remoteCanvasesRef.current).forEach(canvas => {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      });
+    
+      // 2) Now re‑draw whatever lines the server has (none on a new round)
       if (allDrawings && typeof allDrawings === 'object') {
         Object.entries(allDrawings).forEach(([peerId, lines]) => {
-          // Only render for remote peers (not self)
           if (peerId === socket.id) return;
           const container = getOrCreateRemoteContainer(peerId);
           if (!container) return;
           const peerCanvas = container.querySelector('#remote-drawing-' + peerId);
-          if (!peerCanvas) return;
           const ctx = peerCanvas.getContext('2d');
-          ctx.clearRect(0, 0, peerCanvas.width, peerCanvas.height);
           lines.forEach(({ from, to, color, thickness }) => {
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             ctx.strokeStyle = color;
             ctx.lineWidth = thickness * (peerCanvas.width / 640);
             ctx.beginPath();
-            ctx.moveTo(from.x * (peerCanvas.width / 640), from.y * (peerCanvas.height / 480));
-            ctx.lineTo(to.x * (peerCanvas.width / 640), to.y * (peerCanvas.height / 480));
+            ctx.moveTo(
+              from.x * (peerCanvas.width / 640),
+              from.y * (peerCanvas.height / 480)
+            );
+            ctx.lineTo(
+              to.x * (peerCanvas.width / 640),
+              to.y * (peerCanvas.height / 480)
+            );
             ctx.stroke();
           });
         });
@@ -445,6 +454,23 @@ useEffect(() => {
 
     // Listen for start-game event from server
     socket.on('start-game', ({ roundDuration }) => {
+      // 1) Clear your own drawing canvas
+      if (drawingCanvasRef.current) {
+        const ctx = drawingCanvasRef.current.getContext('2d');
+        ctx.clearRect(0, 0,
+          drawingCanvasRef.current.width,
+          drawingCanvasRef.current.height
+        );
+      }
+      lastDrawingPosRef.current = null;
+    
+      // 2) Clear every remote‐overlay canvas
+      Object.values(remoteCanvasesRef.current).forEach(canvas => {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      });
+    
+      // 3) Now kick off the timer
       setGameOver(false);
       setTimeLeft(roundDuration);
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -511,6 +537,14 @@ useEffect(() => {
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       });
+      // Clear any client-side drawing state for remote peers (if used)
+      // If you cache remote drawing data, reset it here
+      if (remoteCanvasesRef.current) {
+        Object.keys(remoteCanvasesRef.current).forEach(peerId => {
+          // Optionally, you could reset any additional state here if needed
+          // e.g., remoteDrawingData[peerId] = [];
+        });
+      }
     });
 
     return () => {

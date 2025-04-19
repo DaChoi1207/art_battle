@@ -52,6 +52,8 @@ const drawingStates = {}; // { [roomId]: { [peerId]: [ {from,to,color,thickness}
 
 const palettes = {}; // { [socketId]: [color1, color2, ...] }
 io.on('connection', socket => {
+  // Store votes per lobby: { [lobbyId]: { [playerId]: { voterId: score, ... } } }
+  const votesByLobby = {};
   console.log('User connected:', socket.id);
 
   // Palette persistence
@@ -184,6 +186,9 @@ io.on('connection', socket => {
   socket.on('start-game', (lobbyId, roundDuration) => {
     submittedImages[lobbyId] = {};
 
+    // FIX: Clear all drawing state for this room so remote canvases start blank
+    drawingStates[lobbyId] = {};
+
     const lobby = activeLobbies[lobbyId];
     if (!lobby) return;
 
@@ -227,6 +232,12 @@ io.on('connection', socket => {
         });
       }, 3000);
     }, duration * 1000);
+  });
+
+  // Also allow manual clearing if needed
+  socket.on('clear-canvas', (roomId) => {
+    drawingStates[roomId] = {};
+    io.in(roomId).emit('clear-canvas');
   });
 
   socket.on('get-prompt', lobbyId => {
@@ -290,6 +301,45 @@ io.on('connection', socket => {
       image,
       peerId: socket.id
     });
+  });
+
+  // Multiplayer voting: collect votes from all players
+  socket.on('submit-votes', ({ ratings, lobbyId }) => {
+    if (!activeLobbies[lobbyId]) return;
+    if (!votesByLobby[lobbyId]) votesByLobby[lobbyId] = {};
+    // Each voter can only submit once
+    Object.entries(ratings).forEach(([playerId, score]) => {
+      if (!votesByLobby[lobbyId][playerId]) votesByLobby[lobbyId][playerId] = {};
+      votesByLobby[lobbyId][playerId][socket.id] = score;
+    });
+    // Check if all players have voted (excluding themselves)
+    const numPlayers = activeLobbies[lobbyId].players.length;
+    // Each player votes for every other player (not themselves)
+    const expectedVotesPerPlayer = numPlayers - 1;
+    const allVoted = activeLobbies[lobbyId].players.every(pid => {
+      // Each player must have submitted votes for all others
+      if (pid === socket.id) return true; // skip self
+      const votesForPlayer = votesByLobby[lobbyId][pid] || {};
+      return Object.keys(votesForPlayer).length >= expectedVotesPerPlayer;
+    });
+    if (allVoted) {
+      // Aggregate: for each player, average their received scores
+      const tallies = {};
+      let maxAvg = -Infinity, winner = null;
+      for (const pid of activeLobbies[lobbyId].players) {
+        const votes = votesByLobby[lobbyId][pid] || {};
+        const scores = Object.values(votes);
+        const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+        tallies[pid] = { avg, scores, num: scores.length };
+        if (avg > maxAvg) {
+          maxAvg = avg;
+          winner = pid;
+        }
+      }
+      io.in(lobbyId).emit('voting-results', { winner, tallies });
+      // Optionally, clear votes for next round
+      delete votesByLobby[lobbyId];
+    }
   });
 
   socket.on('clear-canvas', roomId => {
