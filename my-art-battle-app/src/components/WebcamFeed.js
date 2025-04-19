@@ -71,8 +71,8 @@ function WebcamFeed({ roomId, dominance = 'right' }) {
       // 2) Drawing overlay canvas (rename to avoid shadowing)
       const peerCanvas = document.createElement('canvas');
       peerCanvas.id = "remote-drawing-" + peerId;
-      peerCanvas.width = 640;
-      peerCanvas.height = 480;
+      peerCanvas.width = 120;
+      peerCanvas.height = 90;
       peerCanvas.style.position = 'absolute';
       peerCanvas.style.top = '0';
       peerCanvas.style.left = '0';
@@ -103,6 +103,33 @@ function WebcamFeed({ roomId, dominance = 'right' }) {
   
 
   useEffect(() => {
+    // Drawing SYNC: On mount, request all peer drawings and render them
+    socket.emit('request-drawing-sync', roomId, (allDrawings) => {
+      // allDrawings: { peerId: [ {from,to,color,thickness} ] }
+      if (allDrawings && typeof allDrawings === 'object') {
+        Object.entries(allDrawings).forEach(([peerId, lines]) => {
+          // Only render for remote peers (not self)
+          if (peerId === socket.id) return;
+          const container = getOrCreateRemoteContainer(peerId);
+          if (!container) return;
+          const peerCanvas = container.querySelector('#remote-drawing-' + peerId);
+          if (!peerCanvas) return;
+          const ctx = peerCanvas.getContext('2d');
+          ctx.clearRect(0, 0, peerCanvas.width, peerCanvas.height);
+          lines.forEach(({ from, to, color, thickness }) => {
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = color;
+            ctx.lineWidth = thickness * (peerCanvas.width / 640);
+            ctx.beginPath();
+            ctx.moveTo(from.x * (peerCanvas.width / 640), from.y * (peerCanvas.height / 480));
+            ctx.lineTo(to.x * (peerCanvas.width / 640), to.y * (peerCanvas.height / 480));
+            ctx.stroke();
+          });
+        });
+      }
+    });
+
     // On mount, ask server for current round status (for late joiners)
     socket.emit('get-round-status', roomId, ({ timeLeft }) => {
       if (typeof timeLeft === 'number' && timeLeft > 0) {

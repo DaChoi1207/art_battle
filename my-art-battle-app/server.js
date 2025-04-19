@@ -47,6 +47,9 @@ const WORD_BANK = [
 
 const submittedImages = {};
 
+// Store drawing actions per room/player
+const drawingStates = {}; // { [roomId]: { [peerId]: [ {from,to,color,thickness} ] } }
+
 io.on('connection', socket => {
   console.log('User connected:', socket.id);
 
@@ -243,6 +246,16 @@ io.on('connection', socket => {
     socket.to(roomId).emit('peer-draw', {
       from, to, color, thickness, peerId: socket.id
     });
+    // Store for sync
+    if (!drawingStates[roomId]) drawingStates[roomId] = {};
+    if (!drawingStates[roomId][socket.id]) drawingStates[roomId][socket.id] = [];
+    drawingStates[roomId][socket.id].push({ from, to, color, thickness });
+  });
+
+  // Drawing sync for new/rejoining players
+  socket.on('request-drawing-sync', (roomId, ack) => {
+    // Send all drawing data for this room
+    ack(drawingStates[roomId] || {});
   });
 
   socket.on('video-frame', ({ roomId, image }) => {
