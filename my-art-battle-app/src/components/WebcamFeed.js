@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import socket from '../socket';
+import ColorPopover from './ColorPopover';
 
 
 //const socket = io('http://localhost:3001'); // Socket.io connection (adjust port if necessary)
@@ -23,7 +24,47 @@ function WebcamFeed({ roomId, dominance = 'right' }) {
   const drawingCanvasRef = useRef(null);
   const lastDrawingPosRef = useRef(null);
   const brushSizeRef = useRef(4);
-  const lineColorRef = useRef("red");
+  // --- Color Palette State ---
+  const defaultPalette = ["#e63946", "#457b9d", "#f1faee", "#ffbe0b", "#8338ec"];
+  const [colorPalette, setColorPalette] = useState(() => {
+    const stored = localStorage.getItem('artbattle_palette');
+    return stored ? JSON.parse(stored) : defaultPalette;
+  });
+
+  const colorPaletteRef = useRef(colorPalette);
+useEffect(() => {
+  colorPaletteRef.current = colorPalette;
+}, [colorPalette]);
+  // Only initialize palette from backend ONCE per session unless palette is truly different
+  const [paletteInitialized, setPaletteInitialized] = useState(false);
+  useEffect(() => {
+    if (paletteInitialized) return;
+    socket.emit('request-palette', (serverPalette) => {
+      if (serverPalette && Array.isArray(serverPalette)) {
+        // Only set if different from local
+        const local = JSON.stringify(colorPalette);
+        const remote = JSON.stringify(serverPalette);
+        if (local !== remote) {
+          setColorPalette(serverPalette);
+        }
+      }
+      setPaletteInitialized(true);
+    });
+  }, [roomId, paletteInitialized, colorPalette]);
+  // -1 means no color popover is open
+  const [selectedColorIdx, setSelectedColorIdx] = useState(-1);
+  useEffect(() => {
+    if (colorPalette && Array.isArray(colorPalette)) {
+      localStorage.setItem('artbattle_palette', JSON.stringify(colorPalette));
+      // Send palette to server
+      socket.emit('update-palette', { palette: colorPalette, roomId });
+    }
+  }, [colorPalette, roomId]);
+  const lineColorRef = useRef();
+  // Ensure the initial drawing color matches the first palette color
+  useEffect(() => {
+    lineColorRef.current = colorPalette[0] || defaultPalette[0];
+  }, [colorPalette]);
   
   // We'll store remote container elements by peerId (includes video and drawing canvas)
   const remoteContainersRef = useRef({});
@@ -284,18 +325,21 @@ function WebcamFeed({ roomId, dominance = 'right' }) {
           lastDrawingPosRef.current = null;
           socket.emit('clear-canvas', roomId);
         } else if (isColorChangeActive && rightHandGesture) {
-          if (rightHandGesture === "pointer") lineColorRef.current = "blue";
-          else if (rightHandGesture === "two_finger") lineColorRef.current = "green";
-          else if (rightHandGesture === "three_finger") lineColorRef.current = "red";
-          else if (rightHandGesture === "four_finger") lineColorRef.current = "yellow";
-          else if (rightHandGesture === "open_palm") lineColorRef.current = "white";
+          // Map gestures to palette slots 0-4
+          let idx = 0;
+          if (rightHandGesture === "pointer") idx = 0;
+          else if (rightHandGesture === "two_finger") idx = 1;
+          else if (rightHandGesture === "three_finger") idx = 2;
+          else if (rightHandGesture === "four_finger") idx = 3;
+          else if (rightHandGesture === "open_palm") idx = 4;
+          lineColorRef.current = colorPaletteRef.current[idx] || defaultPalette[idx];
 
           ctx.save();
           ctx.font = "28px Arial";
           ctx.fillStyle = "#fff";
-          ctx.fillRect(10, 60, 180, 30);
-          ctx.fillStyle = "#000";
-          ctx.fillText(`Color: ${lineColorRef.current}`, 20, 65);
+          ctx.fillRect(10, 60, 220, 36);
+          ctx.fillStyle = colorPaletteRef.current[idx] || defaultPalette[idx];
+          ctx.fillText(`Selected: #${(colorPaletteRef.current[idx]||defaultPalette[idx]).replace('#','').toUpperCase()}`, 20, 85);
           ctx.restore();
         } else if (isBrushResizeActive && rightHandLandmarks) {
           const thumb = rightHandLandmarks[4];
@@ -478,6 +522,69 @@ function WebcamFeed({ roomId, dominance = 'right' }) {
 
   return (
     <div className="w-full flex flex-col items-center">
+      {/* Color Palette Picker */}
+      <div className="flex flex-col items-center mb-4 w-full">
+        <div className="mb-1 text-[#5b5f97] font-bold text-lg flex items-center gap-2">
+          <span role="img" aria-label="palette">🎨</span> Change your Palette!
+        </div>
+        <div className="flex gap-3 justify-center">
+          {colorPalette.map((color, idx) => (
+            <div key={idx} className="flex flex-col items-center relative">
+              <button
+                className={`w-10 h-10 rounded-full border-4 shadow-lg transition-all duration-150 ${selectedColorIdx === idx ? 'border-[#ffbe0b] scale-110' : 'border-[#e2ece9]'}`}
+                style={{ background: color, outline: selectedColorIdx === idx ? '2px solid #8338ec' : 'none' }}
+                onClick={() => setSelectedColorIdx(idx)}
+                aria-label={`Select color ${idx+1}`}
+              />
+              {/* Popover for editing color */}
+              {selectedColorIdx === idx && (
+                <ColorPopover onClose={() => setSelectedColorIdx(-1)}>
+                  <div className="mb-2 text-xs text-[#5b5f97] font-semibold">Edit Color</div>
+                  <input
+                    type="color"
+                    value={color}
+                    onChange={e => {
+                      const newPalette = [...colorPalette];
+                      newPalette[idx] = e.target.value;
+                      setColorPalette(newPalette);
+                    }}
+                    className="w-10 h-8 rounded border-2 border-[#e2ece9] cursor-pointer mb-2"
+                    aria-label={`Pick color ${idx+1}`}
+                  />
+                  <div className="mb-1 text-xs text-[#a685e2] font-medium">Or pick from below!</div>
+                  <div className="flex flex-wrap gap-1 justify-center max-w-[140px]">
+                    {[
+                      '#000000', '#808080', '#C0C0C0', '#FFFFFF',
+                      '#800000', '#A52A2A', '#8B4513', '#D2691E',
+                      '#FF0000', '#FFA500', '#FFFF00', '#008000',
+                      '#00FFFF', '#0000FF', '#800080', '#FFC0CB',
+                      '#FFD700', '#A9A9A9', '#B22222', '#228B22',
+                      '#F5DEB3', '#F08080', '#20B2AA', '#6495ED',
+                    ].map((basicColor, i) => (
+                      <button
+                        key={basicColor + i}
+                        className="w-6 h-6 rounded-full border-2 border-[#e2ece9] shadow hover:scale-110 transition-all"
+                        style={{ background: basicColor }}
+                        onClick={() => {
+                          const newPalette = [...colorPalette];
+                          newPalette[idx] = basicColor;
+                          setColorPalette(newPalette);
+                        }}
+                        aria-label={`Quick pick ${basicColor}`}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    className="mt-2 px-3 py-1 rounded bg-gradient-to-r from-[#cddafd] via-[#bee1e6] to-[#fad2e1] text-[#5b5f97] font-bold shadow hover:shadow-lg border border-[#e2ece9] text-xs"
+                    onClick={() => setSelectedColorIdx(-1)}
+                  >Close</button>
+                </ColorPopover>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="text-xs mt-1 text-[#a685e2] font-medium">Tip: Gestures are used to <b>swap</b> between colors.</div>
+      </div>
       {/* Timer and Status */}
       <div className="w-full flex justify-center gap-6 mb-2">
         {timeLeft !== null && !gameOver && (

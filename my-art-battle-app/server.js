@@ -50,8 +50,21 @@ const submittedImages = {};
 // Store drawing actions per room/player
 const drawingStates = {}; // { [roomId]: { [peerId]: [ {from,to,color,thickness} ] } }
 
+const palettes = {}; // { [socketId]: [color1, color2, ...] }
 io.on('connection', socket => {
   console.log('User connected:', socket.id);
+
+  // Palette persistence
+  socket.on('update-palette', ({ palette }) => {
+    if (palette && Array.isArray(palette) && palette.length === 5) {
+      palettes[socket.id] = palette;
+    }
+  });
+  socket.on('request-palette', (ack) => {
+    if (typeof ack === 'function') {
+      ack(palettes[socket.id] || null);
+    }
+  });
 
   socket.on('create-lobby', (ack) => {
     const lobbyId = genLobbyId();
