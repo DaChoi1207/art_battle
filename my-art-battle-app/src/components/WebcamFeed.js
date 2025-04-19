@@ -173,11 +173,8 @@ function WebcamFeed({ roomId, dominance = 'right' }) {
       }
 
       function getGestureName(extended, handedness) {
-        if (
-          handedness === "Right" &&
-          extended.thumb && extended.index && !extended.middle &&
-          !extended.ring && extended.pinky
-        ) {
+        // YOLO = thumb + index + pinky extended, middle & ring folded
+        if (extended.thumb && extended.index && !extended.middle && !extended.ring && extended.pinky) {
           return "yolo";
         }
         if (extended.count === 1 && extended.index) return "pointer";
@@ -229,6 +226,7 @@ function WebcamFeed({ roomId, dominance = 'right' }) {
             ctx.fillText(`${displayLabel}: ${gesture}`, textX, textY);
             ctx.restore();
 
+              
             if (isDraw) {
               // This hand is for drawing (respects dominance)
               if (gesture === "yolo") shouldClearCanvas = true;
