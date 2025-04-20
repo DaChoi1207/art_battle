@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import socket from '../socket';
 import '../styles/heart-animation.css';
+import VoiceChat from './VoiceChat';
 
 const PALETTE = [
   '#e63946', '#457b9d', '#f1faee', '#ffbe0b',
@@ -11,6 +12,7 @@ const PALETTE = [
 function getRandomPaletteColor(idx) {
   return PALETTE[idx % PALETTE.length];
 }
+
 
 export default function Gallery() {
   const { id } = useParams();
@@ -70,9 +72,8 @@ export default function Gallery() {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center 
-                    justify-start bg-gradient-to-br from-[#fff1e6] via-[#cddafd] to-[#bee1e6]
-                    py-8 px-2 title-font">
+    <div className="min-h-screen w-full flex flex-col items-center justify-start bg-gradient-to-br from-[#fff1e6] via-[#cddafd] to-[#bee1e6] py-8 px-2 title-font">
+      <VoiceChat roomId={id} />
       <h2 className="text-4xl md:text-5xl font-extrabold mb-2 text-[#5b5f97]
                      drop-shadow-lg tracking-tight title-font">
         <span className="bg-gradient-to-r from-[#e63946] via-[#ffbe0b] to-[#8338ec]

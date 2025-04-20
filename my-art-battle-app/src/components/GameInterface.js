@@ -1,10 +1,12 @@
 // src/components/GameInterface.js
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import VoiceChat from './VoiceChat';
 import socket from '../socket';
 import WebcamFeed from './WebcamFeed';
 import TimerDisplay from './TimerDisplay';
 import { useLocation } from 'react-router-dom';
+
 
 export default function GameInterface() {
   const [timeLeft, setTimeLeft] = useState(null);
@@ -109,15 +111,16 @@ export default function GameInterface() {
   // 4) Once we have a prompt, show the drawing interface
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#fff1e6] via-[#cddafd] to-[#bee1e6] title-font">
-      {/* Top Bar: Prompt & Timer */}
-      <div className="w-full flex items-center justify-between px-8 py-4 bg-white/80 shadow-lg rounded-b-3xl border-b-2 border-[#e2ece9] sticky top-0 z-30 title-font">
-        <div className="text-2xl font-bold text-[#5b5f97] flex items-center gap-3 title-font">
-          <span role="img" aria-label="sparkle">🎨</span>
-          Drawing Prompt:
-          <span className="ml-2 text-[#3b3561] bg-yellow-100 rounded-lg px-3 py-1 font-extrabold shadow-sm text-2xl title-font">{prompt}</span>
+      <VoiceChat roomId={id} />
+        {/* Top Bar: Prompt & Timer */}
+        <div className="w-full flex items-center justify-between px-8 py-4 bg-white/80 shadow-lg rounded-b-3xl border-b-2 border-[#e2ece9] sticky top-0 z-30 title-font">
+          <div className="text-2xl font-bold text-[#5b5f97] flex items-center gap-3 title-font">
+            <span role="img" aria-label="sparkle">🎨</span>
+            Drawing Prompt:
+            <span className="ml-2 text-[#3b3561] bg-yellow-100 rounded-lg px-3 py-1 font-extrabold shadow-sm text-2xl title-font">{prompt}</span>
+          </div>
+          <TimerDisplay timeLeft={timeLeft} gameOver={gameOver} />
         </div>
-        <TimerDisplay timeLeft={timeLeft} gameOver={gameOver} />
-      </div>
 
       {/* Main Area: Drawing + Video Grid */}
       <div className="flex-1 flex flex-col md:flex-row gap-8 px-6 py-6 max-w-7xl mx-auto w-full title-font">

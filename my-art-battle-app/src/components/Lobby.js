@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import socket from '../socket';
 import { AiOutlineQuestionCircle } from 'react-icons/ai';
 import HowToPlayModal from './HowToPlayModal';
+import VoiceChat from './VoiceChat';
 import { FcCheckmark } from "react-icons/fc";
 
 function Lobby() {
@@ -114,6 +115,7 @@ function Lobby() {
               ) : (
                 <MiniRemoteWebcam peerId={player.id} lobbyId={id} frame={webcamFrames.current[player.id]} />
               )}
+              <VoiceChat roomId={id} />
               <div className="title-font text-base mt-2 text-[var(--color-text)]">{player.nickname || player.id}</div>
               {player.id === socket.id && (
                 <button className="mt-2 px-3 py-1 rounded-full bg-gradient-to-r from-[#cddafd] via-[#bee1e6] to-[#fad2e1] text-[var(--color-text)] text-xs font-semibold shadow hover:from-[#fad2e1] hover:to-[#bee1e6] transition" onClick={() => setWebcamEnabled(e => !e)}>
