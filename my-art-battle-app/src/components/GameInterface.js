@@ -108,21 +108,21 @@ export default function GameInterface() {
 
   // 4) Once we have a prompt, show the drawing interface
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#fff1e6] via-[#cddafd] to-[#bee1e6] font-sans">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#fff1e6] via-[#cddafd] to-[#bee1e6] title-font">
       {/* Top Bar: Prompt & Timer */}
-      <div className="w-full flex items-center justify-between px-8 py-4 bg-white/80 shadow-lg rounded-b-3xl border-b-2 border-[#e2ece9] sticky top-0 z-30">
-        <div className="text-2xl font-bold text-[#5b5f97] flex items-center gap-3">
+      <div className="w-full flex items-center justify-between px-8 py-4 bg-white/80 shadow-lg rounded-b-3xl border-b-2 border-[#e2ece9] sticky top-0 z-30 title-font">
+        <div className="text-2xl font-bold text-[#5b5f97] flex items-center gap-3 title-font">
           <span role="img" aria-label="sparkle">🎨</span>
           Drawing Prompt:
-          <span className="ml-2 text-[#3b3561] bg-yellow-100 rounded-lg px-3 py-1 font-extrabold shadow-sm text-2xl">{prompt}</span>
+          <span className="ml-2 text-[#3b3561] bg-yellow-100 rounded-lg px-3 py-1 font-extrabold shadow-sm text-2xl title-font">{prompt}</span>
         </div>
         <TimerDisplay timeLeft={timeLeft} gameOver={gameOver} />
       </div>
 
       {/* Main Area: Drawing + Video Grid */}
-      <div className="flex-1 flex flex-col md:flex-row gap-8 px-6 py-6 max-w-7xl mx-auto w-full">
+      <div className="flex-1 flex flex-col md:flex-row gap-8 px-6 py-6 max-w-7xl mx-auto w-full title-font">
         {/* Drawing Canvas Area */}
-        <div className="flex-1 flex flex-col items-center justify-center bg-white/80 rounded-3xl shadow-xl border-2 border-[#e2ece9] p-6 min-w-[350px]">
+        <div className="flex-1 flex flex-col items-center justify-center bg-white/80 rounded-3xl shadow-xl border-2 border-[#e2ece9] p-6 min-w-[350px] title-font">
           <WebcamFeed roomId={id} dominance={handedness} setTimeLeft={setTimeLeft} setGameOver={setGameOver} />
         </div>
         {/* Video Call Grid Area (remote-container will be rendered inside WebcamFeed) */}
@@ -130,7 +130,7 @@ export default function GameInterface() {
       </div>
 
       {/* Bottom Bar: Fun Footer or Controls */}
-      <div className="w-full flex items-center justify-center py-4 px-8 bg-gradient-to-r from-[#cddafd]/80 via-[#bee1e6]/80 to-[#fad2e1]/80 shadow-inner rounded-t-3xl border-t-2 border-[#e2ece9] mt-auto">
+      <div className="w-full flex items-center justify-center py-4 px-8 bg-gradient-to-r from-[#cddafd]/80 via-[#bee1e6]/80 to-[#fad2e1]/80 shadow-inner rounded-t-3xl border-t-2 border-[#e2ece9] mt-auto title-font">
         <span className="font-bold text-lg text-[#5b5f97] tracking-wide flex items-center gap-2">
           <span role="img" aria-label="battle">⚔️</span>
           Art Battle in Progress! Unleash your creativity!

@@ -692,17 +692,17 @@ useEffect(() => {
               className="rounded-full px-4 py-2 shadow-lg text-base font-semibold bg-gradient-to-r from-[#cddafd] via-[#bee1e6] to-[#fad2e1] text-[#5b5f97] border-2 border-[#e2ece9] flex items-center min-w-[150px] max-w-[320px] animate-fade-in transition-all duration-200"
               style={{ minHeight: 36 }}
             >
-              <span className="text-base font-semibold text-[#5b5f97] mr-2">
+              <span className="text-base font-bold uppercase tracking-wide text-[#5b5f97] mr-3">
                 Mode:
               </span>
-              <span className="text-base font-semibold text-[#5b5f97]">
+              <span className="text-base font-bold uppercase tracking-wide text-[#5b5f97]">
                 {gestureNotification ? gestureNotification : <span className="text-[#b8c1ec]">None Selected...</span>}
               </span>
             </div>
             {/* Selected color display */}
-            <div className="flex items-center gap-2 bg-gradient-to-r from-[#fad2e1] via-[#bee1e6] to-[#cddafd] rounded-full px-4 py-2 shadow-lg border-2 border-[#e2ece9]">
-              <span className="text-xs font-bold uppercase tracking-wide text-[#5b5f97]">Selected Color:</span>
-              <span style={{ color: selectedColorDisplay, fontSize: 22, filter: 'drop-shadow(0 1px 2px #fff)' }}>●</span>
+            <div className="flex items-center gap-3 bg-gradient-to-r from-[#fad2e1] via-[#bee1e6] to-[#cddafd] rounded-full px-6 py-2 shadow-lg border-2 border-[#e2ece9] min-h-[48px]" style={{ height: 48 }}>
+              <span className="text-base font-bold uppercase tracking-wide text-[#5b5f97]">Selected Color:</span>
+              <span style={{ color: selectedColorDisplay, fontSize: 26, filter: 'drop-shadow(0 1px 2px #fff)' }}>●</span>
             </div>
           </div>
         </div>
