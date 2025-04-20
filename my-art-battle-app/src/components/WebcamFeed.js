@@ -14,6 +14,7 @@ import ColorPopover from './ColorPopover';
 // });
 
 function WebcamFeed({ roomId, dominance = 'right', setTimeLeft: setTimeLeftParent, setGameOver: setGameOverParent }) {
+  const yoloHoldRef = React.useRef(null);
   // Notification state for gesture and color
   const [gestureNotification, setGestureNotification] = useState("");
   const [selectedColorDisplay, setSelectedColorDisplay] = useState("#e63946"); // default color
@@ -320,9 +321,22 @@ useEffect(() => {
             if (isDraw) {
               // This hand is for drawing (respects dominance)
               if (gesture === "yolo") {
-                shouldClearCanvas = true;
-                setGestureNotification("Canvas Cleared!");
-              } else if (gesture === "pointer") {
+                // YOLO gesture: require hold for 2 seconds (minimal, careful change)
+                if (!yoloHoldRef.current) {
+                  yoloHoldRef.current = Date.now();
+                }
+                const heldFor = Date.now() - yoloHoldRef.current;
+                if (heldFor >= 1000) {
+                  shouldClearCanvas = true;
+                  setGestureNotification("Canvas Cleared!");
+                  yoloHoldRef.current = null;
+                } else {
+                  setGestureNotification("deleting..");
+                }
+              } else {
+                yoloHoldRef.current = null;
+              }
+              if (gesture === "pointer") {
                 isDrawingActive = true;
                 setGestureNotification("Drawing Mode Active!");
               } else if (gesture === "two_finger") {
@@ -334,7 +348,7 @@ useEffect(() => {
               } else if (gesture === "open_palm") {
                 isColorChangeActive = true;
                 setGestureNotification("Color Selection Mode!");
-              } else {
+              } else if (gesture !== "yolo") {
                 setGestureNotification("");
               }
             } else if (isMode) {
