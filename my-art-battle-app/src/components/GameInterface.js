@@ -80,15 +80,15 @@ export default function GameInterface() {
       socket.off('start-game');
       socket.off('game-over');
 
-      // navigate and pass along the hostId and roundDuration
-      navigate(`/gallery/${id}`, { state: { artworks, winner, hostId, roundDuration } });
+      // navigate and pass along the hostId, roundDuration, and handedness
+      navigate(`/gallery/${id}`, { state: { artworks, winner, hostId, roundDuration, handedness } });
     };
 
     socket.on('show-gallery', handleShowGallery);
     return () => {
       socket.off('show-gallery', handleShowGallery);
     };
-  }, [id, navigate]);
+  }, [id, navigate, handedness]);
 
   // 3) Render a waiting message until we have a prompt
   if (invalid) {

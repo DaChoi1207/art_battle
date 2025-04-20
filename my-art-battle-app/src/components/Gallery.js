@@ -19,7 +19,8 @@ export default function Gallery() {
     artworks = {},
     winner: winnerFromState = null,
     hostId = null,
-    roundDuration: durationFromState = 15
+    roundDuration: durationFromState = 15,
+    handedness = 'right'
   } = useLocation().state || {};
 
   const roundDuration = durationFromState;
@@ -29,7 +30,7 @@ export default function Gallery() {
   // Restore Play Again navigation: listen for 'start-game' and navigate to /game/:id
   useEffect(() => {
     const onStartGame = ({ roundDuration }) => {
-      navigate(`/game/${id}`, { state: { roundDuration } });
+      navigate(`/game/${id}`, { state: { roundDuration, handedness } });
     };
     socket.on('start-game', onStartGame);
     return () => {
