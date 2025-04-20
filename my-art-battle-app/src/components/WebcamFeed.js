@@ -14,6 +14,10 @@ import ColorPopover from './ColorPopover';
 // });
 
 function WebcamFeed({ roomId, dominance = 'right', setTimeLeft: setTimeLeftParent, setGameOver: setGameOverParent }) {
+  // Notification state for gesture and color
+  const [gestureNotification, setGestureNotification] = useState("");
+  const [selectedColorDisplay, setSelectedColorDisplay] = useState("#e63946"); // default color
+
   console.log('WebcamFeed: received dominance prop:', dominance);
   const drawHand = dominance === 'right' ? 'Right' : 'Left';
   const modeHand = dominance === 'right' ? 'Left' : 'Right';
@@ -310,21 +314,29 @@ useEffect(() => {
             window.drawConnectors(ctx, landmarks, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
             window.drawLandmarks(ctx, landmarks, { color: '#FF0000', lineWidth: 1 });
 
-            ctx.save();
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-            ctx.font = "24px Arial";
-            ctx.fillStyle = "yellow";
-            ctx.fillText(`${displayLabel}: ${gesture}`, textX, textY);
-            ctx.restore();
+            // Removed on-canvas gesture text. Notifications are shown below webcam.
 
               
             if (isDraw) {
               // This hand is for drawing (respects dominance)
-              if (gesture === "yolo") shouldClearCanvas = true;
-              else if (gesture === "pointer") isDrawingActive = true;
-              else if (gesture === "two_finger") isErasingActive = true;
-              else if (gesture === "three_finger") isBrushResizeActive = true;
-              else if (gesture === "open_palm") isColorChangeActive = true;
+              if (gesture === "yolo") {
+                shouldClearCanvas = true;
+                setGestureNotification("Canvas Cleared!");
+              } else if (gesture === "pointer") {
+                isDrawingActive = true;
+                setGestureNotification("Drawing Mode Active!");
+              } else if (gesture === "two_finger") {
+                isErasingActive = true;
+                setGestureNotification("Erasing Mode Active!");
+              } else if (gesture === "three_finger") {
+                isBrushResizeActive = true;
+                setGestureNotification("Brush Resize Mode!");
+              } else if (gesture === "open_palm") {
+                isColorChangeActive = true;
+                setGestureNotification("Color Selection Mode!");
+              } else {
+                setGestureNotification("");
+              }
             } else if (isMode) {
               // This hand is for mode (respects dominance)
               rightHandGesture = gesture;
@@ -351,13 +363,9 @@ useEffect(() => {
           else if (rightHandGesture === "open_palm") idx = 4;
           lineColorRef.current = colorPaletteRef.current[idx] || defaultPalette[idx];
 
-          ctx.save();
-          ctx.font = "28px Arial";
-          ctx.fillStyle = "#fff";
-          ctx.fillRect(10, 60, 220, 36);
-          ctx.fillStyle = colorPaletteRef.current[idx] || defaultPalette[idx];
-          ctx.fillText(`Selected: #${(colorPaletteRef.current[idx]||defaultPalette[idx]).replace('#','').toUpperCase()}`, 20, 85);
-          ctx.restore();
+          // Update selected color display and show notification for color change
+          const newColor = colorPaletteRef.current[idx] || defaultPalette[idx];
+          setSelectedColorDisplay(newColor);
         } else if (isBrushResizeActive && rightHandLandmarks) {
           const thumb = rightHandLandmarks[4];
           const index = rightHandLandmarks[8];
@@ -376,7 +384,7 @@ useEffect(() => {
           ctx.beginPath();
           ctx.moveTo(thumbX, thumbY);
           ctx.lineTo(indexX, indexY);
-          ctx.strokeStyle = "blue";
+          ctx.strokeStyle = "black";
           ctx.lineWidth = 2;
           ctx.stroke();
           ctx.restore();
@@ -574,12 +582,16 @@ useEffect(() => {
           {colorPalette.map((color, idx) => (
             <div key={idx} className="flex flex-col items-center relative">
               <button
-                className={`w-10 h-10 rounded-full border-4 shadow-lg transition-all duration-150 ${selectedColorIdx === idx ? 'border-[#ffbe0b] scale-110' : 'border-[#e2ece9]'}`}
-                style={{ background: color, outline: selectedColorIdx === idx ? '2px solid #8338ec' : 'none' }}
+                className={`w-10 h-10 rounded-full border-4 shadow-lg transition-all duration-150 ${
+                  selectedColorIdx === idx ? 'border-[#ffbe0b] scale-110' : 'border-[#e2ece9]'
+                }`}
+                style={{
+                  background: color,
+                  outline: selectedColorIdx === idx ? '2px solid #8338ec' : 'none'
+                }}
                 onClick={() => setSelectedColorIdx(idx)}
                 aria-label={`Select color ${idx+1}`}
               />
-              {/* Popover for editing color */}
               {selectedColorIdx === idx && (
                 <ColorPopover onClose={() => setSelectedColorIdx(-1)}>
                   <div className="mb-2 text-xs text-[#5b5f97] font-semibold">Edit Color</div>
@@ -620,42 +632,95 @@ useEffect(() => {
                   <button
                     className="mt-2 px-3 py-1 rounded bg-gradient-to-r from-[#cddafd] via-[#bee1e6] to-[#fad2e1] text-[#5b5f97] font-bold shadow hover:shadow-lg border border-[#e2ece9] text-xs"
                     onClick={() => setSelectedColorIdx(-1)}
-                  >Close</button>
+                  >
+                    Close
+                  </button>
                 </ColorPopover>
               )}
             </div>
           ))}
         </div>
-        <div className="text-xs mt-1 text-[#a685e2] font-medium">Tip: Gestures are used to <b>swap</b> between colors.</div>
+        <div className="text-xs mt-1 text-[#a685e2] font-medium">
+          Tip: Gestures are used to <b>swap</b> between colors.
+        </div>
       </div>
-
-
+  
       {/* Drawing Canvas + Video Feed */}
       <div className="flex flex-col md:flex-row gap-8 w-full justify-center items-start">
-        {/* Drawing Canvas Area */}
-        <div className="relative flex flex-col items-center justify-center bg-gradient-to-br from-[#fff1e6]/80 via-[#cddafd]/80 to-[#bee1e6]/80 rounded-2xl shadow-lg border-2 border-[#e2ece9] p-4 mb-4 md:mb-0" style={{ width: 660, minHeight: 500 }}>
-          <div className="text-[#5b5f97] font-bold mb-2 text-lg flex items-center gap-2">
-            <span role="img" aria-label="you">🖌️</span> Your Drawing Canvas
+        {/* Left column: camera + notification */}
+        <div className="flex flex-col items-center">
+          {/* Drawing Canvas Area */}
+          <div
+            className="relative flex flex-col items-center justify-center
+                       bg-gradient-to-br from-[#fff1e6]/80 via-[#cddafd]/80 to-[#bee1e6]/80
+                       rounded-2xl shadow-lg border-2 border-[#e2ece9] p-4 mb-2"
+            style={{ width: 660, minHeight: 500 }}
+          >
+            <div className="text-[#5b5f97] font-bold mb-2 text-lg flex items-center gap-2">
+              <span role="img" aria-label="you">🖌️</span> Your Drawing Canvas
+            </div>
+            <div className="relative" style={{ width: 640, height: 480 }}>
+              <video
+                ref={videoRef}
+                style={{ display: 'none' }}
+                width={640}
+                height={480}
+                autoPlay
+              />
+              <canvas
+                ref={canvasRef}
+                width={640}
+                height={480}
+                className="rounded-xl border-2 border-[#b8c1ec] shadow-md"
+                style={{ position: 'absolute', top: 0, left: 0 }}
+              />
+              <canvas
+                ref={drawingCanvasRef}
+                width={640}
+                height={480}
+                className="rounded-xl"
+                style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
+              />
+            </div>
           </div>
-          <div className="relative" style={{ width: 640, height: 480 }}>
-            <video ref={videoRef} style={{ display: 'none' }} width={640} height={480} autoPlay />
-            <canvas ref={canvasRef} width={640} height={480} className="rounded-xl border-2 border-[#b8c1ec] shadow-md" style={{ position: 'absolute', top: 0, left: 0 }} />
-            <canvas ref={drawingCanvasRef} width={640} height={480} className="rounded-xl" style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} />
+  
+          {/* Gesture Notification (white background) */}
+          {/* Mode + Color notification bar under camera/canvas */}
+          <div className="w-full flex flex-row items-center gap-3 mt-2 mb-4" style={{ maxWidth: 660 }}>
+            {/* Mode notification */}
+            <div
+              className="rounded-full px-4 py-2 shadow-lg text-base font-semibold bg-gradient-to-r from-[#cddafd] via-[#bee1e6] to-[#fad2e1] text-[#5b5f97] border-2 border-[#e2ece9] flex items-center min-w-[150px] max-w-[320px] animate-fade-in transition-all duration-200"
+              style={{ minHeight: 36 }}
+            >
+              <span className="text-base font-semibold text-[#5b5f97] mr-2">
+                Mode:
+              </span>
+              <span className="text-base font-semibold text-[#5b5f97]">
+                {gestureNotification ? gestureNotification : <span className="text-[#b8c1ec]">None Selected...</span>}
+              </span>
+            </div>
+            {/* Selected color display */}
+            <div className="flex items-center gap-2 bg-gradient-to-r from-[#fad2e1] via-[#bee1e6] to-[#cddafd] rounded-full px-4 py-2 shadow-lg border-2 border-[#e2ece9]">
+              <span className="text-xs font-bold uppercase tracking-wide text-[#5b5f97]">Selected Color:</span>
+              <span style={{ color: selectedColorDisplay, fontSize: 22, filter: 'drop-shadow(0 1px 2px #fff)' }}>●</span>
+            </div>
           </div>
         </div>
-
+  
         {/* Video Call Grid for Other Players */}
         <div className="flex-1 flex flex-col items-center">
           <div className="text-[#5b5f97] font-bold mb-2 text-lg flex items-center gap-2">
             <span role="img" aria-label="peers">🧑‍🤝‍🧑</span> Other Players
           </div>
-          <div id="remote-container" className="grid grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-xl min-h-[200px]">
-            {/* Remote tiles will be injected here. Styled as small video/drawing tiles. */}
-          </div>
+          <div
+            id="remote-container"
+            className="grid grid-cols-2 md:grid-cols-3 gap-6 w-full max-w-xl min-h-[200px]"
+          />
         </div>
       </div>
     </div>
   );
+  
 }
 
 export default WebcamFeed;
