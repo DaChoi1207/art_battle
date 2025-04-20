@@ -12,6 +12,7 @@ const io = new Server(server, {
 const activeLobbies = {};
 const socketToLobby = {}; // Track which lobby each socket is in
 const socketToNickname = {}; // Track nickname for each socket
+const likesStore = {};
 function genLobbyId() {
   // 4‑digit numeric code (1000–9999)
   return String(Math.floor(1000 + Math.random() * 9000));
@@ -346,6 +347,21 @@ io.on('connection', socket => {
     console.log('Clearing canvas for room', roomId);
     socket.to(roomId).emit('clear-canvas');
   });
+
+  // Use a Set to store which users (socket.id) have liked each artwork
+  socket.on('like-artwork', ({ galleryId, artistId, liked }) => {
+    if (!likesStore[galleryId]) likesStore[galleryId] = {};
+    if (!likesStore[galleryId][artistId]) likesStore[galleryId][artistId] = new Set();
+
+    if (liked) {
+      likesStore[galleryId][artistId].add(socket.id);
+    } else {
+      likesStore[galleryId][artistId].delete(socket.id);
+    }
+    const newCount = likesStore[galleryId][artistId].size;
+    io.to(artistId).emit('artwork-liked', { artistId, count: newCount });
+  });
+
 
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
