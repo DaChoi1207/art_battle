@@ -77,18 +77,18 @@ export default function Gallery() {
   const winner = winnerFromState || winnerId;
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-start bg-gradient-to-br from-[#fff1e6] via-[#cddafd] to-[#bee1e6] py-8 px-2">
-      <h2 className="text-4xl md:text-5xl font-extrabold mb-2 text-[#5b5f97] drop-shadow-lg tracking-tight">
+    <div className="min-h-screen w-full flex flex-col items-center justify-start bg-gradient-to-br from-[#fff1e6] via-[#cddafd] to-[#bee1e6] py-8 px-2 title-font">
+      <h2 className="text-4xl md:text-5xl font-extrabold mb-2 text-[#5b5f97] drop-shadow-lg tracking-tight title-font">
         <span className="bg-gradient-to-r from-[#e63946] via-[#ffbe0b] to-[#8338ec] bg-clip-text text-transparent">Gallery</span>
       </h2>
-      <div className="mb-8 text-lg text-[#5b5f97] font-medium">See everyone's masterpieces below!</div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 w-full max-w-6xl">
+      <div className="mb-8 text-lg text-[#5b5f97] font-medium title-font">See everyone's masterpieces below!</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 w-full max-w-6xl title-font">
         {Object.entries(artworks).map(([playerId, data], idx) => {
           const isWinner = playerId === winner;
           return (
             <div
               key={playerId}
-              className={`relative flex flex-col items-center bg-white/80 rounded-3xl shadow-xl border-4 p-4 transition-transform duration-200 hover:-translate-y-2 hover:shadow-2xl ${isWinner ? 'border-yellow-400 ring-4 ring-yellow-200' : 'border-[#e2ece9]'}`}
+              className={`relative flex flex-col items-center bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border-4 p-4 transition-transform duration-200 hover:-translate-y-2 hover:shadow-2xl ${isWinner ? 'border-yellow-400 ring-4 ring-yellow-200' : 'border-[#e2ece9]'} title-font`}
               style={{ borderColor: isWinner ? '#FFD700' : getRandomPaletteColor(idx) }}
             >
               <div className="absolute top-2 right-2 flex gap-1 z-10">
@@ -108,7 +108,7 @@ export default function Gallery() {
                 className="w-full h-64 object-contain rounded-2xl shadow-md mb-3 bg-[#f1faee] border-2 border-[#b8c1ec]"
                 style={{ background: '#f1faee' }}
               />
-              <div className="font-bold text-lg text-[#5b5f97] flex items-center gap-2">
+              <div className="font-bold text-lg text-[#5b5f97] flex items-center gap-2 title-font">
                 {data.nickname || playerId}
               </div>
               {/* Optional: Show prompt/round info here if available */}
@@ -119,7 +119,7 @@ export default function Gallery() {
       </div>
       {isHost && (
         <button
-          className="mt-10 px-8 py-3 rounded-full bg-gradient-to-r from-[#cddafd] via-[#bee1e6] to-[#fad2e1] text-[#5b5f97] font-extrabold text-lg shadow-lg hover:scale-105 hover:shadow-xl border-2 border-[#e2ece9] transition-all duration-150"
+          className="mt-10 px-8 py-3 rounded-full bg-gradient-to-r from-[#cddafd] via-[#bee1e6] to-[#fad2e1] text-[#5b5f97] font-extrabold text-lg shadow-lg hover:scale-105 hover:shadow-xl border-2 border-[#e2ece9] transition-all duration-150 title-font"
           onClick={handlePlayAgain}
         >
           Play Again
