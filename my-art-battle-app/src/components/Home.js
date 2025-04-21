@@ -5,15 +5,40 @@ import Toast from './Toast';
 import '../index.css';    // ← make sure this is here!
 import { FcHighPriority } from "react-icons/fc";
 import HowToPlayModal from "./HowToPlayModal";
+import { openOAuthPopup } from '../utils/auth';
+import ProfileMenu from './ProfileMenu';
+import AuthModal from './AuthModal';
 
 export default function Home() {
   const [showHowTo, setShowHowTo] = useState(false);
   const [code, setCode] = useState('');
   const [nickname, setNickname] = useState('');
+  const [user, setUser] = useState(null);
   const navigate = useNavigate();
+  const [showAuth, setShowAuth] = useState(false);
 
   const [toast, setToast] = useState({ show: false, message: '' });
   const showToast = (message) => setToast({ show: true, message });
+
+  // Check authentication on mount
+  useEffect(() => {
+    fetch('http://localhost:3001/profile', { credentials: 'include' })
+      .then(res => res.ok ? res.json() : null)
+      .then(setUser);
+  }, []);
+
+  const handleLogin = (provider) => {
+    openOAuthPopup(provider, () => {
+      fetch('http://localhost:3001/profile', { credentials: 'include' })
+        .then(res => res.ok ? res.json() : null)
+        .then(setUser);
+    });
+  };
+
+  const handleLogout = () => {
+    fetch('http://localhost:3001/logout', { credentials: 'include' })
+      .then(() => setUser(null));
+  };
 
   const create = () => {
     socket.emit('create-lobby', (lobbyId) => {
@@ -73,6 +98,10 @@ export default function Home() {
         icon={toast.message ? <FcHighPriority /> : null}
       />
       <HowToPlayModal open={showHowTo} onClose={() => setShowHowTo(false)} />
+      {/* Auth/Profile Bar */}
+      <div className="w-full flex justify-end p-4">
+        <ProfileMenu user={user} onLogout={handleLogout} />
+      </div>
       <div
         className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-[#f0efeb] via-[#cddafd] to-[#fad2e1] px-4"
       >
@@ -115,6 +144,14 @@ export default function Home() {
               "
               maxLength={18}
             />
+            {!user && (
+              <button
+                onClick={() => setShowAuth(true)}
+                className="w-full bg-gradient-to-r from-[#b9deff] via-[#e0c3fc] to-[#fad2e1] text-[var(--color-text)] font-semibold py-3 rounded-full shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition border border-[#e2ece9] hover:from-[#bee1e6] hover:via-[#f0efeb] hover:to-[#fad2e1]"
+              >
+                Authenticate
+              </button>
+            )}
             <button
               onClick={create}
               className="
@@ -187,6 +224,14 @@ export default function Home() {
           </div>
         </div>
       </div>
-  </>
-);
+      <AuthModal
+        open={showAuth}
+        onClose={() => setShowAuth(false)}
+        onLogin={(provider) => {
+          setShowAuth(false);
+          handleLogin(provider);
+        }}
+      />
+    </>
+  );
 }

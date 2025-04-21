@@ -6,6 +6,13 @@ const { Server } = require('socket.io');
 
 const app = express(); // <-- Initialize app before using it
 
+// CORS setup for frontend (React on localhost:3000)
+const cors = require('cors');
+app.use(cors({
+  origin: 'http://localhost:3000',
+  credentials: true,
+}));
+
 // OAuth/session
 const session = require('express-session');
 const passport = require('passport');
@@ -109,8 +116,13 @@ app.get('/auth/google',
 app.get('/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/' }),
   (req, res) => {
-    // Successful authentication, redirect or respond as needed
-    res.redirect('/profile'); // You can change this to your front-end route
+    // For popup-based login: notify opener and close window
+    res.send(`
+      <script>
+        window.opener && window.opener.postMessage('oauth-success', 'http://localhost:3000');
+        window.close();
+      </script>
+    `);
   }
 );
 
@@ -123,8 +135,13 @@ app.get('/auth/discord',
 app.get('/auth/discord/callback',
   passport.authenticate('discord', { failureRedirect: '/' }),
   (req, res) => {
-    // Successful authentication, redirect or respond as needed
-    res.redirect('/profile'); // You can change this to your front-end route
+    // For popup-based login: notify opener and close window
+    res.send(`
+      <script>
+        window.opener && window.opener.postMessage('oauth-success', 'http://localhost:3000');
+        window.close();
+      </script>
+    `);
   }
 );
 
