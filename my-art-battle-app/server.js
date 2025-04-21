@@ -529,6 +529,15 @@ io.on('connection', socket => {
         }
       }
       io.in(lobbyId).emit('voting-results', { winner, tallies });
+      // Update stats for all players (games_played) and winner (games_won)
+      const pool = require('./db');
+      for (const pid of activeLobbies[lobbyId].players) {
+        // Increment games_played for all players
+        pool.query('UPDATE users SET games_played = COALESCE(games_played, 0) + 1 WHERE id = $1', [pid]).catch(() => {});
+      }
+      if (winner) {
+        pool.query('UPDATE users SET games_won = COALESCE(games_won, 0) + 1 WHERE id = $1', [winner]).catch(() => {});
+      }
       // Optionally, clear votes for next round
       delete votesByLobby[lobbyId];
     }
@@ -581,6 +590,25 @@ io.on('connection', socket => {
     delete socketToLobby[socket.id];
     delete socketToNickname[socket.id];
   });
+});
+
+// --- API endpoint for updating stats from Gallery page ---
+app.post('/api/update-stats', express.json(), async (req, res) => {
+  const { userId, won } = req.body;
+  if (!userId) return res.status(400).json({ error: 'Missing userId' });
+  try {
+    // Only update if user exists
+    const userRes = await pool.query('SELECT id FROM users WHERE id = $1', [userId]);
+    if (userRes.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    await pool.query('UPDATE users SET games_played = COALESCE(games_played, 0) + 1 WHERE id = $1', [userId]);
+    if (won) {
+      await pool.query('UPDATE users SET games_won = COALESCE(games_won, 0) + 1 WHERE id = $1', [userId]);
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Failed to update stats:', err);
+    res.status(500).json({ error: 'Failed to update stats' });
+  }
 });
 
 server.listen(3001, () => {

@@ -3,6 +3,7 @@ import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import socket from '../socket';
 import '../styles/heart-animation.css';
 import VoiceChat from './VoiceChat';
+import { updateStats } from '../utils/stats';
 
 const PALETTE = [
   '#e63946', '#457b9d', '#f1faee', '#ffbe0b',
@@ -29,16 +30,32 @@ export default function Gallery() {
   const isHost = socket.id === hostId;
   const winner = winnerFromState;
 
-  // Restore Play Again navigation: listen for 'start-game' and navigate to /game/:id
+  // 1) Load the logged‑in user
+  const [profile, setProfile] = useState(null);
+  useEffect(() => {
+    fetch('/profile', { credentials: 'include' })
+      .then(res => res.ok ? res.json() : null)
+      .then(setProfile)
+      .catch(console.error);
+  }, []);
+
+  // 2) Once we know who they are, update games_played / games_won
+  useEffect(() => {
+    if (!profile?.id) return;
+    const won = profile.id === winner;
+    updateStats({ userId: profile.id, won })
+      .then(r => console.log('Stats updated:', r))
+      .catch(console.error);
+  }, [profile, winner]);
+
+  // 3) Allow “Play Again” for the host
   useEffect(() => {
     const onStartGame = ({ roundDuration }) => {
       navigate(`/game/${id}`, { state: { roundDuration, handedness } });
     };
     socket.on('start-game', onStartGame);
-    return () => {
-      socket.off('start-game', onStartGame);
-    };
-  }, [id, navigate]);
+    return () => socket.off('start-game', onStartGame);
+  }, [id, navigate, handedness]);
 
   // likeCounts[artistId] = total number of likes they’ve received
   const [likeCounts, setLikeCounts] = useState({});

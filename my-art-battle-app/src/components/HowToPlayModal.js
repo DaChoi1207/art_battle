@@ -18,17 +18,42 @@ export default function HowToPlayModal({ open, onClose }) {
         >
           <IoMdClose />
         </button>
+        <h2 className="title-font text-2xl font-semibold mb-4 text-center text-[#a685e2]">Gesture Controls!</h2>
 
-        <h2 className="text-2xl font-bold mb-4 text-center text-[#5b5f97]">Gesture Controls</h2>
+        <div className="mt-6">
+          <div className="text-sm text-[#a685e2] mb-2 text-center font-semibold">Choose your dominant hand in the lobby!</div>
+          <h3 className="text-lg font-bold text-[#a685e2] mb-2 text-center">Hand Gesture Controls</h3>
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Non-Dominant Hand */}
+            <div className="flex-1 bg-[#f8fafc] rounded-xl p-4 border border-[#e2ece9]">
+              <h4 className="font-semibold text-[#a685e2] mb-2 text-center">Non-Dominant Hand (Controls)</h4>
+              <ul className="space-y-1 text-base text-[var(--color-text)]">
+                <li>☝️ <span className="font-bold text-[#a685e2]">Pointer:</span> Draw Mode</li>
+                <li>✌️ <span className="font-bold text-[#a685e2]">Two Fingers:</span> Erase Mode</li>
+                <li>🖖 <span className="font-bold text-[#a685e2]">Three Fingers:</span> Size Control</li>
+                <li>🖐️ <span className="font-bold text-[#a685e2]">Five Fingers:</span> Colour Select</li>
+                <li>🤟 <span className="font-bold text-[#a685e2]">Yolo:</span> Clear Board</li>
+              </ul>
+            </div>
+            {/* Dominant Hand */}
+            <div className="flex-1 bg-[#f8fafc] rounded-xl p-4 border border-[#e2ece9]">
+              <h4 className="font-semibold text-[#a685e2] mb-2 text-center">Dominant Hand (Draw)</h4>
+              <ul className="space-y-1 text-base text-[var(--color-text)]">
+                <li>☝️ <span className="font-bold text-[#a685e2]">Pointer:</span> Draw/Erase</li>
+                <li>🖖 <span className="font-bold text-[#a685e2]">Pointer and Thumb:</span> Pinch to resize</li>
+                <li>🖐️ <span className="font-bold text-[#a685e2]">Five Fingers:</span> Pick a Colour (a different colour corresponding to the number of fingers held up!)</li>
+                {/* <ul className="ml-6 space-y-0.5 text-sm text-[var(--color-text)]">
+                  <li>☝️ <span className="font-bold text-[#a685e2]">Pointer</span> = Colour 1</li>
+                  <li>✌️ <span className="font-bold text-[#a685e2]">Two Fingers</span> = Colour 2</li>
+                  <li>🖖 <span className="font-bold text-[#a685e2]">Three Fingers</span> = Colour 3</li>
+                  <li>✋ <span className="font-bold text-[#a685e2]">Four Fingers</span> = Colour 4</li>
+                  <li>🖐️ <span className="font-bold text-[#a685e2]">Open Palm</span> = Colour 5</li>
+                </ul> */}
+              </ul>
+            </div>
+          </div>
+        </div>
 
-        <ul className="space-y-3 text-base text-gray-700 mb-6">
-          <li>☝️ <span className="font-bold text-[#a685e2]">One Finger</span> = Draw</li>
-          <li>✌️ <span className="font-bold text-[#a685e2]">Two Fingers</span> = Erase</li>
-          <li>🖖 <span className="font-bold text-[#a685e2]">Three Fingers</span> = Change Color</li>
-          <li>✋ <span className="font-bold text-[#a685e2]">Open Palm</span> = Resize Brush</li>
-        </ul>
-
-        <div className="text-sm text-[#a685e2] mt-4 text-center">Tip: Use a nickname and invite your friends for more fun!</div>
       </div>
     </div>
   );
