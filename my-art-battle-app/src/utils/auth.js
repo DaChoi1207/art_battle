@@ -12,8 +12,11 @@ export function openOAuthPopup(provider, onSuccess) {
   window.addEventListener('message', function handler(e) {
     if (e.origin === 'http://localhost:3000' && e.data === 'oauth-success') {
       onSuccess();
-      window.removeEventListener('message', handler);
-      win && win.close();
+      if (window.opener) {
+        window.opener.postMessage('oauth-success', 'http://localhost:3000');
+        window.opener.location.reload();
+      }
+      window.close();
     }
   });
 }

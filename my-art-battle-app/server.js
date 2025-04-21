@@ -47,6 +47,7 @@ passport.use(new GoogleStrategy({
     callbackURL: "/auth/google/callback"
   },
   async (accessToken, refreshToken, profile, done) => {
+    console.log('DEBUG: GoogleStrategy verify function called');
     try {
       // Try to find the user by email
       const result = await pool.query(
@@ -56,6 +57,12 @@ passport.use(new GoogleStrategy({
       let user;
       if (result.rows.length > 0) {
         user = result.rows[0];
+        // Update auth_provider to 'google' on login
+        await pool.query(
+          'UPDATE users SET auth_provider = $1 WHERE id = $2',
+          ['google', user.id]
+        );
+        user.auth_provider = 'google';
       } else {
         // Insert new user if not found
         const insertResult = await pool.query(
@@ -64,8 +71,10 @@ passport.use(new GoogleStrategy({
         );
         user = insertResult.rows[0];
       }
+      console.log('DEBUG: GoogleStrategy user found/created:', user);
       done(null, user);
     } catch (err) {
+      console.error('DEBUG: GoogleStrategy error:', err);
       done(err, null);
     }
   }
@@ -90,6 +99,12 @@ passport.use(new DiscordStrategy({
         );
         if (result.rows.length > 0) {
           user = result.rows[0];
+          // Update auth_provider to 'discord' on login
+          await pool.query(
+            'UPDATE users SET auth_provider = $1 WHERE id = $2',
+            ['discord', user.id]
+          );
+          user.auth_provider = 'discord';
         }
       }
       if (!user) {
@@ -108,21 +123,29 @@ passport.use(new DiscordStrategy({
 ));
 
 // Start Google OAuth login
-app.get('/auth/google',
+app.get('/auth/google', (req, res, next) => {
+  console.log('DEBUG: /auth/google route hit');
+  next();
+},
   passport.authenticate('google', { scope: ['profile', 'email'] })
 );
 
 // Google OAuth callback
-app.get('/auth/google/callback',
+app.get('/auth/google/callback', (req, res, next) => {
+  console.log('DEBUG: /auth/google/callback route hit');
+  next();
+},
   passport.authenticate('google', { failureRedirect: '/' }),
   (req, res) => {
+    console.log('DEBUG: Google OAuth callback success, user:', req.user);
     // For popup-based login: notify opener and close window
     res.send(`
       <script>
-        window.opener && window.opener.postMessage('oauth-success', 'http://localhost:3000');
+        // send a message to the opener window
+        window.opener.postMessage('oauth-success', 'http://localhost:3000');
         window.close();
       </script>
-    `);
+        `);
   }
 );
 
@@ -138,7 +161,7 @@ app.get('/auth/discord/callback',
     // For popup-based login: notify opener and close window
     res.send(`
       <script>
-        window.opener && window.opener.postMessage('oauth-success', 'http://localhost:3000');
+        window.opener.postMessage('oauth-success', 'http://localhost:3000');
         window.close();
       </script>
     `);

@@ -25,6 +25,19 @@ export default function Home() {
     fetch('http://localhost:3001/profile', { credentials: 'include' })
       .then(res => res.ok ? res.json() : null)
       .then(setUser);
+
+    // Listen for OAuth success message from popup
+    function handleOAuthMessage(e) {
+      // accept messages coming from your backend origin
+      if ((e.origin === "http://localhost:3001" || e.origin === window.location.origin)
+        && e.data === "oauth-success") {
+        fetch('http://localhost:3001/profile', { credentials: 'include' })
+          .then(res => res.ok ? res.json() : null)
+          .then(setUser);
+      }
+    }
+    window.addEventListener('message', handleOAuthMessage);
+    return () => window.removeEventListener('message', handleOAuthMessage);
   }, []);
 
   const handleLogin = (provider) => {
