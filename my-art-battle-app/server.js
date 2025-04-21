@@ -1,9 +1,160 @@
 // server.js
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 
-const app = express();
+const app = express(); // <-- Initialize app before using it
+
+// OAuth/session
+const session = require('express-session');
+const passport = require('passport');
+
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+}));
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Serialization
+passport.serializeUser((user, done) => {
+  done(null, user.id);
+});
+
+passport.deserializeUser(async (id, done) => {
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+    done(null, result.rows[0]);
+  } catch (err) {
+    done(err, null);
+  }
+});
+
+// Google OAuth
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: "/auth/google/callback"
+  },
+  async (accessToken, refreshToken, profile, done) => {
+    try {
+      // Try to find the user by email
+      const result = await pool.query(
+        'SELECT * FROM users WHERE email = $1',
+        [profile.emails[0].value]
+      );
+      let user;
+      if (result.rows.length > 0) {
+        user = result.rows[0];
+      } else {
+        // Insert new user if not found
+        const insertResult = await pool.query(
+          'INSERT INTO users (username, email, auth_provider) VALUES ($1, $2, $3) RETURNING *',
+          [profile.displayName, profile.emails[0].value, 'google']
+        );
+        user = insertResult.rows[0];
+      }
+      done(null, user);
+    } catch (err) {
+      done(err, null);
+    }
+  }
+));
+
+// Discord OAuth
+const DiscordStrategy = require('passport-discord').Strategy;
+passport.use(new DiscordStrategy({
+    clientID: process.env.DISCORD_CLIENT_ID,
+    clientSecret: process.env.DISCORD_CLIENT_SECRET,
+    callbackURL: "/auth/discord/callback",
+    scope: ['identify', 'email']
+  },
+  async (accessToken, refreshToken, profile, done) => {
+    try {
+      // Try to find the user by Discord ID or email
+      let user;
+      if (profile.email) {
+        const result = await pool.query(
+          'SELECT * FROM users WHERE email = $1',
+          [profile.email]
+        );
+        if (result.rows.length > 0) {
+          user = result.rows[0];
+        }
+      }
+      if (!user) {
+        // Insert new user if not found
+        const insertResult = await pool.query(
+          'INSERT INTO users (username, email, auth_provider) VALUES ($1, $2, $3) RETURNING *',
+          [profile.username, profile.email || null, 'discord']
+        );
+        user = insertResult.rows[0];
+      }
+      done(null, user);
+    } catch (err) {
+      done(err, null);
+    }
+  }
+));
+
+// Start Google OAuth login
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })
+);
+
+// Google OAuth callback
+app.get('/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: '/' }),
+  (req, res) => {
+    // Successful authentication, redirect or respond as needed
+    res.redirect('/profile'); // You can change this to your front-end route
+  }
+);
+
+// Start Discord OAuth login
+app.get('/auth/discord',
+  passport.authenticate('discord')
+);
+
+// Discord OAuth callback
+app.get('/auth/discord/callback',
+  passport.authenticate('discord', { failureRedirect: '/' }),
+  (req, res) => {
+    // Successful authentication, redirect or respond as needed
+    res.redirect('/profile'); // You can change this to your front-end route
+  }
+);
+
+// Get current user profile (for testing)
+app.get('/profile', (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  res.json(req.user);
+});
+
+// Logout
+app.get('/logout', (req, res) => {
+  req.logout(() => {
+    res.redirect('/');
+  });
+});
+
+// Database connection
+const pool = require('./db');
+
+// Test the connection
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('Database connection error:', err);
+  } else {
+    console.log('Database connected! Time:', res.rows[0]);
+  }
+});
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: '*' }
