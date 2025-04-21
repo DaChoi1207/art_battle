@@ -74,16 +74,16 @@ export default function GameInterface() {
 
   // 2) When the round is over, clean up socket listeners and navigate to the gallery
   useEffect(() => {
-    const handleShowGallery = ({ artworks, winner, hostId }) => {
-      // tear down any drawing/video listeners so they won't fire once the DOM changes
+    const handleShowGallery = ({ artworks, hostId }) => {
+      // Clean up listeners
       socket.off('peer-draw');
       socket.off('peer-video');
       socket.off('clear-canvas');
       socket.off('start-game');
       socket.off('game-over');
 
-      // navigate and pass along the hostId, roundDuration, and handedness
-      navigate(`/gallery/${id}`, { state: { artworks, winner, hostId, roundDuration, handedness } });
+      // Instead of going to gallery, go to voting page
+      navigate(`/vote/${id}`, { state: { artworks, hostId, roundDuration, handedness } });
     };
 
     socket.on('show-gallery', handleShowGallery);
