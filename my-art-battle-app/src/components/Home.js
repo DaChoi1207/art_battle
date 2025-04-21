@@ -116,7 +116,7 @@ export default function Home() {
 
             {/* Title */}
             <h1 className="text-4xl font-semibold title-font tracking-wide text-[var(--color-text)] text-center drop-shadow-sm">
-              DrawLive
+              DrawCam
             </h1>
 
             {/* Nickname + Actions */}

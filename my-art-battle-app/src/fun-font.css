@@ -1,0 +1,11 @@
+@import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap');
+
+.fun-font {
+  font-family: 'Luckiest Guy', cursive;
+  letter-spacing: 0.5px;
+}
+
+.text-outline {
+  color: #fff;
+  text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+}
