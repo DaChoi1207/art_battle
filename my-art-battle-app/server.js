@@ -423,13 +423,13 @@ io.on('connection', socket => {
   });
 
   socket.on('start-game', (lobbyId, roundDuration) => {
+    // Snapshot active players for this round
+    const lobby = activeLobbies[lobbyId];
+    if (!lobby) return;
+    lobby.activePlayers = [...lobby.players];
     // Reset per‑round state
     submittedImages[lobbyId] = {};
     drawingStates[lobbyId] = {};
-
-    const lobby = activeLobbies[lobbyId];
-    if (!lobby) return;
-
     // Pick a random prompt and start the round
     const prompt = WORD_BANK[Math.floor(Math.random() * WORD_BANK.length)];
     lobby.prompt = prompt;
@@ -558,25 +558,33 @@ io.on('connection', socket => {
         submitters: new Set()
       };
     }
-  
+
     const vb = votesByLobby[lobbyId];
-  
+
+    // Only allow activePlayers to submit votes
+    if (!lobby.activePlayers || !lobby.activePlayers.includes(socket.id)) {
+      // Ignore votes from spectators
+      return;
+    }
     vb.ratingsByPlayer[socket.id] = ratings;
     vb.submitters.add(socket.id);
-  
-    const expectedCount = lobby.players.length;
+
+    // Only count votes from active players
+    const expectedCount = lobby.activePlayers && Array.isArray(lobby.activePlayers)
+      ? lobby.activePlayers.length
+      : lobby.players.length; // fallback for safety
     const actualCount = vb.submitters.size;
-  
+
     console.log(`🔎 Votes received: ${actualCount} / ${expectedCount}`);
-  
+
     if (actualCount < expectedCount) {
       socket.emit('waiting-for-others');
       return;
     }
-  
-    // Everyone has voted — tally results
+
+    // Only tally votes for activePlayers
     const tallies = {};
-    for (const pid of lobby.players) {
+    for (const pid of lobby.activePlayers || lobby.players) {
       let total = 0;
       let count = 0;
   
