@@ -13,15 +13,33 @@ app.use(cors({
   credentials: true,
 }));
 
-// OAuth/session
 const session = require('express-session');
+const pgSession = require('connect-pg-simple')(session);
+const pool = require('./db');
+
+// --- SESSION MIDDLEWARE SETUP (Postgres) ---
+// For local development, use secure: false and sameSite: 'lax'.
+// For production, set secure: true and sameSite: 'none' with HTTPS.
+
 const passport = require('passport');
 
-app.use(session({
-  secret: process.env.SESSION_SECRET,
+// create one configured middleware instance
+const sessionMiddleware = session({
+  store: new pgSession({
+    pool: pool, // your existing pg Pool instance
+    tableName: 'session' // default table name
+  }),
+  secret: process.env.SESSION_SECRET || 'keyboard cat',
   resave: false,
   saveUninitialized: false,
-}));
+  cookie: {
+    httpOnly: true,
+    secure: false, // For local dev only. Set to true in production with HTTPS
+    sameSite: 'lax', // 'lax' is best for localhost. Use 'none' with HTTPS in prod if needed
+  }
+});
+// use it for Express
+app.use(sessionMiddleware);
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -183,9 +201,6 @@ app.get('/logout', (req, res) => {
   });
 });
 
-// Database connection
-const pool = require('./db');
-
 // Test the connection
 pool.query('SELECT NOW()', (err, res) => {
   if (err) {
@@ -197,13 +212,23 @@ pool.query('SELECT NOW()', (err, res) => {
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*' }
+  cors: {
+    origin: 'http://localhost:3000', // React dev server
+    credentials: true
+  }
+});
+
+// and reuse the same instance for Socket.IO
+io.use((socket, next) => {
+  sessionMiddleware(socket.request, {}, next);
 });
 
 const activeLobbies = {};
 const socketToLobby = {}; // Track which lobby each socket is in
 const socketToNickname = {}; // Track nickname for each socket
 const likesStore = {};
+const socketToDbUser = {};
+const votesByLobby = {};
 function genLobbyId() {
   // 4‑digit numeric code (1000–9999)
   return String(Math.floor(1000 + Math.random() * 9000));
@@ -244,8 +269,30 @@ const drawingStates = {}; // { [roomId]: { [peerId]: [ {from,to,color,thickness}
 
 const palettes = {}; // { [socketId]: [color1, color2, ...] }
 io.on('connection', socket => {
+  // Debug: print the raw cookie header
+  console.log('[SOCKET] Cookie header:', socket.request.headers.cookie);
+  // Debug: print the session ID and session object
+  console.log('[SOCKET] Session ID:', socket.request.sessionID, 'Session:', socket.request.session);
+  // Debug: print the entire session object
+  // console.log('[SOCKET CONNECT] session:', socket.request.session);
+  // passport/session middleware makes `socket.request.session.passport.user` = your DB id
+  const dbUserId = socket.request.session?.passport?.user;
+  if (dbUserId) {
+    socketToDbUser[socket.id] = dbUserId;
+    console.log('[AUTH] Mapping socket to DB user:', socket.id, dbUserId);
+  }
+
+  // NEW: Allow client to identify user explicitly after login
+  socket.on('identify-user', (dbUserId) => {
+    if (dbUserId) {
+      socketToDbUser[socket.id] = dbUserId;
+      console.log('[IDENTIFY] Set DB user for socket:', socket.id, dbUserId);
+    }
+  });
+
   // Store votes per lobby: { [lobbyId]: { [playerId]: { voterId: score, ... } } }
-  const votesByLobby = {};
+  // const votesByLobby = {};
+
   console.log('User connected:', socket.id);
 
   // Palette persistence
@@ -376,53 +423,80 @@ io.on('connection', socket => {
   });
 
   socket.on('start-game', (lobbyId, roundDuration) => {
+    // Reset per‑round state
     submittedImages[lobbyId] = {};
-
-    // FIX: Clear all drawing state for this room so remote canvases start blank
     drawingStates[lobbyId] = {};
 
     const lobby = activeLobbies[lobbyId];
     if (!lobby) return;
 
+    // Pick a random prompt and start the round
     const prompt = WORD_BANK[Math.floor(Math.random() * WORD_BANK.length)];
     lobby.prompt = prompt;
     lobby.roundStart = Date.now();
-    const parsedDuration = Number(roundDuration);
-    const duration = !isNaN(parsedDuration) && parsedDuration > 0 ? parsedDuration : ROUND_DURATION;
-    lobby.roundDuration = duration; // Store the chosen duration on the lobby
-    console.log('Server: emitting start-game to lobby', lobbyId, 'with', { roundDuration: duration });
-    io.in(lobbyId).emit('start-game', { roundDuration: duration });
-    io.in(lobbyId).emit('new-prompt', prompt);
+    const duration = Number(roundDuration) > 0 ? Number(roundDuration) : ROUND_DURATION;
+    lobby.roundDuration = duration;
 
+    io.in(lobbyId).emit('start-game', { roundDuration: duration });
+    io.in(lobbyId).emit('new-prompt', prompt);    
+
+    // 1) After drawing time elapses, end the game
     setTimeout(() => {
       io.in(lobbyId).emit('game-over');
       io.in(lobbyId).emit('clear-canvas');
 
+      // 2) Give clients 3s to clear/fade masks, then build gallery
       setTimeout(() => {
         const images = submittedImages[lobbyId] || {};
         const playerIds = Object.keys(images);
-        let winner = null;
-        if (playerIds.length > 0) {
-          winner = playerIds[Math.floor(Math.random() * playerIds.length)];
-        }
 
-        // Send artworks as { playerId: { nickname, image } }
+        // Decide a winner (highest vote‑avg already computed elsewhere)
+        // or random fallback if no votes:
+        const winner = playerIds.length
+          ? playerIds[Math.floor(Math.random() * playerIds.length)]
+          : null;
+
+        // Build the artworks payload
         const artworks = {};
-        for (const id of playerIds) {
+        playerIds.forEach(id => {
           artworks[id] = {
             nickname: socketToNickname[id] || id,
             image: images[id]
           };
-        }
+        });
 
+        // ————— SINGLE STATS UPDATE —————
+        const players = lobby.players;
+        // games_played++
+        players.forEach(sockId => {
+          const dbId = socketToDbUser[sockId];
+          if (dbId) {
+            pool.query(
+              'UPDATE users SET games_played = COALESCE(games_played,0) + 1 WHERE id = $1',
+              [dbId]
+            ).catch(console.error);
+          }
+        });
+        // games_won++ for the winner only
+        if (winner) {
+          const winnerDbId = socketToDbUser[winner];
+          if (winnerDbId) {
+            pool.query(
+              'UPDATE users SET games_won = COALESCE(games_won,0) + 1 WHERE id = $1',
+              [winnerDbId]
+            ).catch(console.error);
+          }
+        }
+        // ————————————————————————————
+
+        // 3) Finally, send everyone to the gallery
         io.in(lobbyId).emit('show-gallery', {
           artworks,
           winner,
-          hostId: (activeLobbies[lobbyId] && Array.isArray(activeLobbies[lobbyId].players) && activeLobbies[lobbyId].players.length > 0)
-            ? activeLobbies[lobbyId].players[0]
-            : null // ← include true host ID safely
+          hostId: players[0] || null
         });
       }, 3000);
+
     }, duration * 1000);
   });
 
@@ -496,72 +570,96 @@ io.on('connection', socket => {
   });
 
   // Multiplayer voting: collect votes from all players
+  // replace your existing socket.on('submit-votes', …) with this:
   socket.on('submit-votes', ({ ratings, lobbyId }) => {
-    if (!activeLobbies[lobbyId]) return;
-    if (!votesByLobby[lobbyId]) votesByLobby[lobbyId] = {};
-    // Each voter can only submit once
-    Object.entries(ratings).forEach(([playerId, score]) => {
-      if (!votesByLobby[lobbyId][playerId]) votesByLobby[lobbyId][playerId] = {};
-      votesByLobby[lobbyId][playerId][socket.id] = score;
-    });
-    // Check if all players have voted (excluding themselves)
-    const numPlayers = activeLobbies[lobbyId].players.length;
-    // Each player votes for every other player (not themselves)
-    const expectedVotesPerPlayer = numPlayers - 1;
-    const allVoted = activeLobbies[lobbyId].players.every(pid => {
-      // Each player must have submitted votes for all others
-      if (pid === socket.id) return true; // skip self
-      const votesForPlayer = votesByLobby[lobbyId][pid] || {};
-      return Object.keys(votesForPlayer).length >= expectedVotesPerPlayer;
-    });
-    if (allVoted) {
-      // Aggregate: for each player, average their received scores
-      const tallies = {};
-      let maxAvg = -Infinity, winner = null;
-      for (const pid of activeLobbies[lobbyId].players) {
-        const votes = votesByLobby[lobbyId][pid] || {};
-        const scores = Object.values(votes);
-        const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-        tallies[pid] = { avg, scores, num: scores.length };
-        if (avg > maxAvg) {
-          maxAvg = avg;
-          winner = pid;
+    const lobby = activeLobbies[lobbyId];
+    if (!lobby) return;
+  
+    // Initialize storage if not already there
+    if (!votesByLobby[lobbyId]) {
+      votesByLobby[lobbyId] = {
+        ratingsByPlayer: {},
+        submitters: new Set()
+      };
+    }
+  
+    const vb = votesByLobby[lobbyId];
+  
+    vb.ratingsByPlayer[socket.id] = ratings;
+    vb.submitters.add(socket.id);
+  
+    const expectedCount = lobby.players.length;
+    const actualCount = vb.submitters.size;
+  
+    console.log(`🔎 Votes received: ${actualCount} / ${expectedCount}`);
+  
+    if (actualCount < expectedCount) {
+      socket.emit('waiting-for-others');
+      return;
+    }
+  
+    // Everyone has voted — tally results
+    const tallies = {};
+    for (const pid of lobby.players) {
+      let total = 0;
+      let count = 0;
+  
+      for (const voterId in vb.ratingsByPlayer) {
+        const score = vb.ratingsByPlayer[voterId][pid];
+        if (score !== undefined) {
+          total += score;
+          count++;
         }
       }
-      io.in(lobbyId).emit('voting-results', { winner, tallies });
-      // Update stats for all players (games_played) and winner (games_won)
-      const pool = require('./db');
-      for (const pid of activeLobbies[lobbyId].players) {
-        // Increment games_played for all players
-        pool.query('UPDATE users SET games_played = COALESCE(games_played, 0) + 1 WHERE id = $1', [pid]).catch(() => {});
-      }
-      if (winner) {
-        pool.query('UPDATE users SET games_won = COALESCE(games_won, 0) + 1 WHERE id = $1', [winner]).catch(() => {});
-      }
-      // Optionally, clear votes for next round
-      delete votesByLobby[lobbyId];
+  
+      const avg = count > 0 ? total / count : 0;
+      tallies[pid] = avg;
     }
-  });
-
-  socket.on('clear-canvas', roomId => {
-    console.log('Clearing canvas for room', roomId);
-    socket.to(roomId).emit('clear-canvas');
-  });
-
-  // Use a Set to store which users (socket.id) have liked each artwork
-  socket.on('like-artwork', ({ galleryId, artistId, liked }) => {
-    if (!likesStore[galleryId]) likesStore[galleryId] = {};
-    if (!likesStore[galleryId][artistId]) likesStore[galleryId][artistId] = new Set();
-
-    if (liked) {
-      likesStore[galleryId][artistId].add(socket.id);
-    } else {
-      likesStore[galleryId][artistId].delete(socket.id);
+  
+    // Pick the winner
+    let winner = null;
+    let maxAvg = -Infinity;
+    for (const [pid, avg] of Object.entries(tallies)) {
+      if (avg > maxAvg) {
+        maxAvg = avg;
+        winner = pid;
+      }
     }
-    const newCount = likesStore[galleryId][artistId].size;
-    io.to(artistId).emit('artwork-liked', { artistId, count: newCount });
-  });
+  
+    // Send results to all
+    io.in(lobbyId).emit('voting-results', { winner, tallies });
 
+    // --- STATS UPDATE (SQL) ---
+    // Increment games_played for all authenticated users
+    lobby.players.forEach(sockId => {
+      const dbId = socketToDbUser[sockId];
+      if (dbId) {
+        pool.query(
+          'UPDATE users SET games_played = COALESCE(games_played,0)+1 WHERE id = $1',
+          [dbId]
+        ).catch(console.error);
+      }
+    });
+    // Debug logging for winner stats update
+    console.log('Winner socket ID:', winner);
+    console.log('Winner DB user ID:', socketToDbUser[winner]);
+    console.log('Lobby players:', lobby.players);
+    console.log('DB user IDs:', lobby.players.map(id => socketToDbUser[id]));
+
+    // Increment games_won for the winner (if authenticated)
+    const winnerDbId = socketToDbUser[winner];
+    if (winnerDbId) {
+      pool.query(
+        'UPDATE users SET games_won = COALESCE(games_won,0)+1 WHERE id = $1',
+        [winnerDbId]
+      ).catch(console.error);
+    }
+    // --- END STATS UPDATE ---
+
+    // Clean up
+    delete votesByLobby[lobbyId];
+  });
+  
 
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
@@ -590,6 +688,13 @@ io.on('connection', socket => {
     delete socketToLobby[socket.id];
     delete socketToNickname[socket.id];
   });
+});
+
+// Debug: log HTTP session ID, session object, and raw cookie header for every request
+app.use((req, res, next) => {
+  console.log('[HTTP] Cookie header:', req.headers.cookie);
+  console.log('[HTTP] Session ID:', req.sessionID, 'Session:', req.session);
+  next();
 });
 
 // --- API endpoint for updating stats from Gallery page ---

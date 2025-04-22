@@ -24,7 +24,12 @@ export default function Home() {
   useEffect(() => {
     fetch('http://localhost:3001/profile', { credentials: 'include' })
       .then(res => res.ok ? res.json() : null)
-      .then(setUser);
+      .then(profile => {
+  setUser(profile);
+  if (profile && profile.id) {
+    socket.emit('identify-user', profile.id);
+  }
+});
 
     // Listen for OAuth success message from popup
     function handleOAuthMessage(e) {
@@ -33,7 +38,12 @@ export default function Home() {
         && e.data === "oauth-success") {
         fetch('http://localhost:3001/profile', { credentials: 'include' })
           .then(res => res.ok ? res.json() : null)
-          .then(setUser);
+          .then(profile => {
+  setUser(profile);
+  if (profile && profile.id) {
+    socket.emit('identify-user', profile.id);
+  }
+});
       }
     }
     window.addEventListener('message', handleOAuthMessage);
@@ -44,7 +54,12 @@ export default function Home() {
     openOAuthPopup(provider, () => {
       fetch('http://localhost:3001/profile', { credentials: 'include' })
         .then(res => res.ok ? res.json() : null)
-        .then(setUser);
+        .then(profile => {
+  setUser(profile);
+  if (profile && profile.id) {
+    socket.emit('identify-user', profile.id);
+  }
+});
     });
   };
 

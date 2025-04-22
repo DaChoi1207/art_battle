@@ -4,7 +4,7 @@ import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import socket from '../socket';
 import '../styles/heart-animation.css';
 import VoiceChat from './VoiceChat';
-import { updateStats } from '../utils/stats';
+//import { updateStats } from '../utils/stats';
 
 const PALETTE = [
   '#e63946', '#457b9d', '#f1faee', '#ffbe0b',
@@ -31,6 +31,8 @@ export default function Gallery() {
   const isHost = socket.id === hostId;
   const winner = winnerFromState;
 
+  const [statsUpdated, setStatsUpdated] = useState(false);
+
   // 1) Load the logged‑in user
   const [profile, setProfile] = useState(null);
   useEffect(() => {
@@ -40,14 +42,16 @@ export default function Gallery() {
       .catch(console.error);
   }, []);
 
-  // 2) Once we know who they are, update games_played / games_won
-  useEffect(() => {
-    if (!profile?.id) return;
-    const won = profile.id === winner;
-    updateStats({ userId: profile.id, won })
-      .then(r => console.log('Stats updated:', r))
-      .catch(console.error);
-  }, [profile, winner]);
+  // 2) Once profile & winner are known, bump stats exactly once
+  // useEffect(() => {
+  //   if (!profile || statsUpdated) return;
+  //   const won = profile.id === winner;
+  //   updateStats({ userId: profile.id, won })
+  //     .then(success => {
+  //       if (success) setStatsUpdated(true);
+  //     })
+  //     .catch(console.error);
+  // }, [profile, winner, statsUpdated]);
 
   // 3) Allow “Play Again” for the host
   useEffect(() => {

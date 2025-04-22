@@ -12,6 +12,18 @@ export function openOAuthPopup(provider, onSuccess) {
   window.addEventListener('message', function handler(e) {
     if (e.origin === 'http://localhost:3000' && e.data === 'oauth-success') {
       onSuccess();
+      // --- Force socket.io reconnect to refresh session ---
+      try {
+        const socket = require('../socket').default;
+        if (socket && socket.connected) {
+          socket.disconnect();
+        }
+        setTimeout(() => {
+          socket.connect();
+        }, 200);
+      } catch (err) {
+        // ignore if socket import fails
+      }
       if (window.opener) {
         window.opener.postMessage('oauth-success', 'http://localhost:3000');
         window.opener.location.reload();
