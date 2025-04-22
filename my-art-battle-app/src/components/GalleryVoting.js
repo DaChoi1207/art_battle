@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import socket from '../socket';
 
@@ -61,7 +62,7 @@ export default function GalleryVoting(props) {
   const [ratings, setRatings] = useState({});
   const [hovered, setHovered] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [showAnim, setShowAnim] = useState(false);
+  const [showRipple, setShowRipple] = useState(false);
   const [waitingForResults, setWaitingForResults] = useState(false);
   const [results, setResults] = useState(null);
 
@@ -124,9 +125,9 @@ export default function GalleryVoting(props) {
 
   function handleSubmit() {
     setSubmitting(true);
-    setShowAnim(true);
+    setShowRipple(true);
     setTimeout(() => {
-      setShowAnim(false);
+      setShowRipple(false);
       setSubmitting(false);
       if (currentIdx + 1 < artworkEntries.length) {
         setCurrentIdx(idx => idx + 1);
@@ -136,7 +137,7 @@ export default function GalleryVoting(props) {
         socket.emit('submit-votes', { ratings, lobbyId });
         // onComplete will be called when 'voting-results' is received
       }
-    }, 1200);
+    }, 700);
   }
 
   // 5 stars, each with .5 increments (10 states), accessible and animated
@@ -148,7 +149,7 @@ export default function GalleryVoting(props) {
       const leftValue = i - 0.5;
       const rightValue = i;
       stars.push(
-        <span key={`star-${i}`} className="relative inline-block group">
+        <span key={`star-${i}`} className="relative inline-block group" style={{ width: 48, height: 48 }}>
           {/* Left half (0.5 increment) */}
           <button
             type="button"
@@ -175,12 +176,21 @@ export default function GalleryVoting(props) {
             onBlur={() => setHovered(null)}
             onClick={() => handleStarClick(rightValue)}
           />
-          {/* Star SVG (visual) */}
+          {/* Left half-star SVG (for .5 increments) */}
           <Star
             filled={displayValue >= rightValue}
             half={displayValue >= leftValue && displayValue < rightValue}
-            animated={userRating === rightValue || userRating === leftValue}
+            animated={false}
           />
+          {/* Right full-star SVG (for full increments) */}
+          {displayValue >= rightValue && (
+            <Star
+              filled={true}
+              half={false}
+              animated={false}
+              style={{ position: 'absolute', left: 0, top: 0 }}
+            />
+          )}
         </span>
       );
     }
@@ -221,8 +231,33 @@ export default function GalleryVoting(props) {
             style={{ background: '#f1faee' }}
           />
         </div>
-        <div className="flex justify-center items-center mb-6">
+        <div className="flex justify-center items-center mb-6" style={{ position: 'relative' }}>
           {renderStars()}
+          {/* Ripple Effect */}
+          <AnimatePresence>
+            {showRipple && (
+              <motion.div
+                key="ripple"
+                initial={{ scale: 0.2, opacity: 0.5 }}
+                animate={{ scale: 2.6, opacity: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.7, ease: 'easeOut' }}
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: '50%',
+                  width: 90,
+                  height: 90,
+                  background: 'radial-gradient(circle, #cddafd 60%, #a685e2 100%)',
+                  borderRadius: '50%',
+                  pointerEvents: 'none',
+                  zIndex: 20,
+                  transform: 'translate(-50%, -50%)',
+                  boxShadow: '0 0 18px 10px #cddafd44'
+                }}
+              />
+            )}
+          </AnimatePresence>
         </div>
         <button
           className="mt-2 px-10 py-3 rounded-full bg-gradient-to-r from-[#cddafd] via-[#bee1e6] to-[#fad2e1] title-font text-[#5b5f97] font-extrabold text-xl shadow hover:scale-105 hover:shadow-xl border-2 border-[#e2ece9] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -234,36 +269,6 @@ export default function GalleryVoting(props) {
         <div className="mt-8 text-[#5b5f97] text-base fun-font font-medium">
           Artwork <span className="font-bold">{currentIdx + 1}</span> of <span className="font-bold">{artworkEntries.length}</span>
         </div>
-        <AnimatePresence>
-          {showAnim && (
-            <motion.div
-              className="absolute inset-0 flex items-center justify-center pointer-events-none"
-              initial={{ opacity: 0, scale: 0.6 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.6 }}
-              transition={{ duration: 0.7 }}
-            >
-              <motion.div
-                className="flex gap-1"
-                initial={{ y: 40 }}
-                animate={{ y: -60 }}
-                transition={{ type: 'spring', stiffness: 200, damping: 10 }}
-              >
-                {[...Array(Math.round(ratings[playerId] || 0))].map((_, i) => (
-                  <motion.span
-                    key={i}
-                    className="text-5xl"
-                    initial={{ y: 0, opacity: 1 }}
-                    animate={{ y: -20 - i * 10, opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    ⭐
-                  </motion.span>
-                ))}
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     </div>
   );
