@@ -186,12 +186,32 @@ app.get('/auth/discord/callback',
   }
 );
 
-// Get current user profile (for testing)
+// Get current user profile
 app.get('/profile', (req, res) => {
   if (!req.user) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
   res.json(req.user);
+});
+
+// Update current user profile
+app.post('/profile', express.json(), async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+  const { username, profile_pic } = req.body;
+  try {
+    const result = await pool.query(
+      'UPDATE users SET username = $1, profile_pic = $2 WHERE id = $3 RETURNING *',
+      [username, profile_pic, req.user.id]
+    );
+    // Update the session user object
+    req.login(result.rows[0], err => {
+      if (err) return res.status(500).json({ error: 'Session update failed' });
+      res.json(result.rows[0]);
+    });
+  } catch (err) {
+    console.error('Failed to update profile:', err);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
 });
 
 // Logout

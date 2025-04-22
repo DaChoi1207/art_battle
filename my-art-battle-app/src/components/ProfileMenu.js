@@ -1,8 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ProfileEditModal from './ProfileEditModal';
 
-export default function ProfileMenu({ user, onLogout }) {
+export default function ProfileMenu({ user, onLogout, onProfileUpdate }) {
+  console.log('[ProfileMenu.js] user prop:', user);
   const [open, setOpen] = useState(false);
   const menuRef = useRef();
+  const [editOpen, setEditOpen] = useState(false);
+  const [profile, setProfile] = useState(user);
+  useEffect(() => {
+    console.log('[ProfileMenu.js] local profile state:', profile);
+  }, [profile]);
+
+  useEffect(() => {
+    setProfile(user);
+  }, [user]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -14,7 +25,7 @@ export default function ProfileMenu({ user, onLogout }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [open]);
 
-  if (!user) {
+  if (!profile) {
     return (
       <div className="flex items-center gap-2">
         <span className="text-gray-500 font-medium">Playing as Guest</span>
@@ -22,28 +33,61 @@ export default function ProfileMenu({ user, onLogout }) {
     );
   }
 
+  const handleSave = async (changes) => {
+    try {
+      const res = await fetch('http://localhost:3001/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(changes),
+      });
+      if (!res.ok) throw new Error('Failed to update profile');
+      const updated = await res.json();
+      setProfile(updated);
+      if (onProfileUpdate) onProfileUpdate(updated);
+      setEditOpen(false);
+    } catch (err) {
+      alert('Failed to update profile.');
+    }
+  };
+
   return (
     <div className="relative" ref={menuRef}>
+      <ProfileEditModal user={profile} open={editOpen} onClose={() => setEditOpen(false)} onSave={handleSave} />
       <button
         className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 hover:bg-gray-200 focus:outline-none shadow"
         onClick={() => setOpen((o) => !o)}
       >
-        <span className="font-semibold">{user.username}</span>
-        <span className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-300 to-pink-300 flex items-center justify-center text-lg">
-          {user.username ? user.username[0].toUpperCase() : '?'}
-        </span>
+        <span className="font-semibold">{profile.username}</span>
+        {profile.profile_pic ? (
+          <img src={profile.profile_pic} alt="avatar" className="w-8 h-8 rounded-full object-cover border" />
+        ) : (
+          <span className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-300 to-pink-300 flex items-center justify-center text-lg text-black font-bold">
+            {profile.username ? profile.username[0].toUpperCase() : '?'}
+          </span>
+        )}
       </button>
       {open && (
         <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 p-5 flex flex-col gap-3">
           <div className="flex items-center gap-3 mb-2">
-            <span className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-300 to-pink-300 flex items-center justify-center text-2xl font-bold">
-              {user.username ? user.username[0].toUpperCase() : '?'}
-            </span>
+            {profile.profile_pic ? (
+              <img src={profile.profile_pic} alt="avatar" className="w-10 h-10 rounded-full object-cover border" />
+            ) : (
+              <span className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-300 to-pink-300 flex items-center justify-center text-2xl font-bold">
+                {profile.username ? profile.username[0].toUpperCase() : '?'}
+              </span>
+            )}
             <div className="flex flex-col">
-              <span className="font-bold text-lg leading-tight">{user.username}</span>
-              <span className="text-xs text-gray-400">{user.email}</span>
+              <span className="font-bold text-lg leading-tight">{profile.username}</span>
+              <span className="text-xs text-gray-400">{profile.email}</span>
             </div>
           </div>
+          <button
+            className="w-full px-3 py-2 rounded bg-gradient-to-r from-blue-100 to-pink-100 hover:from-blue-200 hover:to-pink-200 text-blue-900 font-semibold mb-2"
+            onClick={() => setEditOpen(true)}
+          >
+            Edit Profile
+          </button>
           <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-gray-100">
               {user.auth_provider === 'google' && <span className='text-[#4285F4]'><svg width="16" height="16" viewBox="0 0 48 48"><path fill="#4285F4" d="M44.5 20H24v8.5h11.7C34.5 32.6 29.7 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c2.7 0 5.1.9 7 2.4l6.3-6.3C33.5 5.6 28.1 3.5 24 3.5 12.8 3.5 3.5 12.8 3.5 24S12.8 44.5 24 44.5c11.2 0 20.5-9.3 20.5-20.5 0-1.4-.1-2.7-.3-4z"/><path fill="#34A853" d="M6.3 14.7l7 5.1C15.5 16.2 19.4 13.5 24 13.5c2.7 0 5.1.9 7 2.4l6.3-6.3C33.5 5.6 28.1 3.5 24 3.5c-7.3 0-13.5 4.2-16.7 10.2z"/><path fill="#FBBC05" d="M24 44.5c5.7 0 10.5-1.9 14.1-5.1l-6.5-5.3c-2 1.3-4.5 2-7.6 2-5.7 0-10.5-3.9-12.2-9.1l-7 5.4C7.7 39.8 15.3 44.5 24 44.5z"/><path fill="#EA4335" d="M44.5 20H24v8.5h11.7c-1.1 3.1-4.5 7.5-11.7 7.5-6.6 0-12-5.4-12-12s5.4-12 12-12c2.7 0 5.1.9 7 2.4l6.3-6.3C33.5 5.6 28.1 3.5 24 3.5c-7.3 0-13.5 4.2-16.7 10.2z"/></svg></span>}

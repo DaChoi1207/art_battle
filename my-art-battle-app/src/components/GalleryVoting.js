@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import socket from '../socket';
@@ -88,8 +88,29 @@ export default function GalleryVoting(props) {
 
   // Fallback UI if artworks is missing or empty
   let noArtworksUI = null;
-  if (!artworks || Object.keys(artworks).length === 0) {
-    noArtworksUI = <div className="p-8 text-center text-xl text-pink-700">No artworks to vote on.</div>;
+  const noArtworks = !artworks || Object.keys(artworks).length === 0;
+  // Redirect to home after 3 seconds if no artworks
+  useEffect(() => {
+    if (noArtworks) {
+      const timeout = setTimeout(() => {
+        navigate('/');
+      }, 3000);
+      return () => clearTimeout(timeout);
+    }
+  }, [noArtworks, navigate]);
+  if (noArtworks) {
+    noArtworksUI = (
+      <div className="p-8 flex flex-col items-center justify-center text-center">
+        <div className="bg-gradient-to-br from-[#fff1e6] via-[#cddafd] to-[#bee1e6] rounded-3xl shadow-lg border-2 border-[#e2ece9] px-8 py-8 max-w-md w-full animate-fade-in">
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-4xl mb-2" role="img" aria-label="no-art">🎨</span>
+            <span className="text-2xl font-bold text-[#5b5f97] title-font">No artworks to vote on!</span>
+            <span className="text-base text-[#a685e2] mt-2">Looks like nobody submitted an artwork this round.</span>
+            <span className="text-sm text-[#b8c1ec] mt-4">Redirecting to home...</span>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const current = artworkEntries[currentIdx];

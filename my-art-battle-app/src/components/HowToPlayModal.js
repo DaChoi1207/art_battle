@@ -18,11 +18,11 @@ export default function HowToPlayModal({ open, onClose }) {
         >
           <IoMdClose />
         </button>
-        <h2 className="title-font text-2xl font-semibold mb-4 text-center text-[#a685e2]">Gesture Controls!</h2>
+        <h2 className="header-font text-2xl font-bold mb-4 text-center text-[#a685e2]">Gesture Controls!</h2>
 
         <div className="mt-6">
           <div className="text-sm text-[#a685e2] mb-2 text-center font-semibold">Choose your dominant hand in the lobby!</div>
-          <h3 className="text-lg font-bold text-[#a685e2] mb-2 text-center">Hand Gesture Controls</h3>
+          {/* <h3 className="text-lg font-bold text-[#a685e2] mb-2 text-center">Hand Gesture Controls</h3> */}
           <div className="flex flex-col md:flex-row gap-4">
             {/* Non-Dominant Hand */}
             <div className="flex-1 bg-[#f8fafc] rounded-xl p-4 border border-[#e2ece9]">

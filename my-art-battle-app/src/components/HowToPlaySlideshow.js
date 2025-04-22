@@ -99,8 +99,8 @@ export default function HowToPlaySlideshow({ onGestureClick }) {
                   />
                 </svg>
                 <span
-                  className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full ${i === idx ? 'bg-[#5b5f97]' : 'bg-gray-300'} transition-all`}
-                  style={{ zIndex: 2 }}
+                  className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[10px] h-[10px] rounded-full border ${i === idx ? 'bg-[#5b5f97] border-[#5b5f97]' : 'bg-gray-100 border-gray-300'} transition-all`}
+                  style={{ zIndex: 2, boxShadow: i === idx ? '0 1px 4px #a685e233' : 'none' }}
                 />
               </span>
             );
@@ -111,7 +111,7 @@ export default function HowToPlaySlideshow({ onGestureClick }) {
         onClick={onGestureClick}
         className="w-full px-4 py-2 rounded-full bg-gradient-to-r from-blue-100 via-pink-100 to-purple-100 text-blue-900 font-semibold text-base border border-blue-200 flex items-center justify-center gap-2 hover:scale-105 hover:shadow-lg transition-transform duration-150"
       >
-        Gesture Control
+        Gesture Controls
       </button>
     </div>
   );

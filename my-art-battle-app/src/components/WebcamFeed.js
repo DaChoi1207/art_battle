@@ -28,6 +28,9 @@ function WebcamFeed({ roomId, dominance = 'right', setTimeLeft: setTimeLeftParen
   const [gestureNotification, setGestureNotification] = useState("");
   const [selectedColorDisplay, setSelectedColorDisplay] = useState("#e63946"); // default color
 
+  // Artistic hand overlay toggle
+  const [showHandOverlay, setShowHandOverlay] = useState(true);
+
   console.log('WebcamFeed: received dominance prop:', dominance);
   const drawHand = dominance === 'right' ? 'Right' : 'Left';
   const modeHand = dominance === 'right' ? 'Left' : 'Right';
@@ -321,8 +324,49 @@ useEffect(() => {
             const textX = isDraw ? 10 : canvas.width - 150;
             const textY = 30 + i * 30;
 
-            window.drawConnectors(ctx, landmarks, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
-            window.drawLandmarks(ctx, landmarks, { color: '#FF0000', lineWidth: 1 });
+            // Artistic overlay: pastel colors, drop shadow, toggleable
+            if (showHandOverlay) {
+              // Soft pastel color palette
+              const pastelColors = [
+                '#b8c1ec', // soft blue
+                '#bee1e6', // soft teal
+                '#fad2e1', // soft pink
+                '#cddafd', // soft lavender
+                '#fff1e6', // soft cream
+                '#e2ece9', // pale mint
+                '#f1faee', // pale white
+                '#ffbe0b', // soft yellow
+                '#a685e2'  // soft purple
+              ];
+              // Artistic connectors: rainbow pastel gradient by index
+              window.drawConnectors(ctx, landmarks, HAND_CONNECTIONS, {
+                color: pastelColors[i % pastelColors.length],
+                lineWidth: 3,
+              });
+              // Artistic landmarks: soft color, drop shadow
+              window.drawLandmarks(ctx, landmarks, {
+                color: pastelColors[(i+3) % pastelColors.length],
+                lineWidth: 2,
+                fillColor: pastelColors[(i+6) % pastelColors.length],
+                radius: (data) => 3,
+                // Custom draw: add drop shadow
+                shadowColor: '#a685e2',
+                shadowBlur: 12,
+              });
+              // Add drop shadow manually for browsers that don't support shadow in drawLandmarks
+              // (If needed: draw circles with shadow)
+              // for (const pt of landmarks) {
+              //   ctx.save();
+              //   ctx.beginPath();
+              //   ctx.arc(pt.x * canvas.width, pt.y * canvas.height, 7, 0, 2 * Math.PI);
+              //   ctx.shadowColor = '#a685e2';
+              //   ctx.shadowBlur = 10;
+              //   ctx.fillStyle = pastelColors[(i+6) % pastelColors.length];
+              //   ctx.globalAlpha = 0.85;
+              //   ctx.fill();
+              //   ctx.restore();
+              // }
+            }
 
             // Removed on-canvas gesture text. Notifications are shown below webcam.
 
@@ -596,6 +640,27 @@ useEffect(() => {
 
   return (
     <div className="w-full flex flex-col items-center">
+      {/* Artistic Hand Overlay Toggle */}
+      {/* <div className="flex flex-row items-center gap-4 mb-2 mt-2">
+        <button
+          className={`relative px-5 py-2 rounded-full border-2 shadow-lg font-semibold transition-all duration-150 focus:outline-none text-base 
+            ${showHandOverlay ? 'bg-gradient-to-r from-[#b8c1ec] to-[#fad2e1] text-[#5b5f97] border-[#a685e2] scale-105' : 'bg-white text-[#b8c1ec] border-[#e2ece9] opacity-60'}`}
+          style={{ minWidth: 120, boxShadow: showHandOverlay ? '0 4px 16px #a685e248' : 'none' }}
+          onClick={() => setShowHandOverlay(v => !v)}
+          aria-pressed={showHandOverlay}
+        >
+          {showHandOverlay ? (
+            <span className="flex items-center gap-2">
+              <span role="img" aria-label="show">🎨</span> Show Hand Overlay
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              <span role="img" aria-label="hide">🚫</span> Hide Hand Overlay
+            </span>
+          )}
+        </button>
+        <span className="text-xs text-[#a685e2] font-medium">Toggle artistic hand skeleton overlay</span>
+      </div> */}
       {/* Color Palette Picker */}
       <div className="flex flex-col items-center mb-4 w-full">
         <div className="mb-1 text-[#5b5f97] font-bold text-lg flex items-center gap-2">
