@@ -465,35 +465,11 @@ io.on('connection', socket => {
           };
         });
 
-        // ————— SINGLE STATS UPDATE —————
-        const players = lobby.players;
-        // games_played++
-        players.forEach(sockId => {
-          const dbId = socketToDbUser[sockId];
-          if (dbId) {
-            pool.query(
-              'UPDATE users SET games_played = COALESCE(games_played,0) + 1 WHERE id = $1',
-              [dbId]
-            ).catch(console.error);
-          }
-        });
-        // games_won++ for the winner only
-        if (winner) {
-          const winnerDbId = socketToDbUser[winner];
-          if (winnerDbId) {
-            pool.query(
-              'UPDATE users SET games_won = COALESCE(games_won,0) + 1 WHERE id = $1',
-              [winnerDbId]
-            ).catch(console.error);
-          }
-        }
-        // ————————————————————————————
-
         // 3) Finally, send everyone to the gallery
         io.in(lobbyId).emit('show-gallery', {
           artworks,
           winner,
-          hostId: players[0] || null
+          hostId: lobby.players[0] || null
         });
       }, 3000);
 
@@ -630,34 +606,35 @@ io.on('connection', socket => {
     io.in(lobbyId).emit('voting-results', { winner, tallies });
 
     // --- STATS UPDATE (SQL) ---
-    // Increment games_played for all authenticated users
-    lobby.players.forEach(sockId => {
-      const dbId = socketToDbUser[sockId];
-      if (dbId) {
+    // Only run this ONCE, after all votes are in and results are sent
+    if (votesByLobby[lobbyId]) { // Guard: only update if voting state exists
+      lobby.players.forEach(sockId => {
+        const dbId = socketToDbUser[sockId];
+        if (dbId) {
+          pool.query(
+            'UPDATE users SET games_played = COALESCE(games_played,0)+1 WHERE id = $1',
+            [dbId]
+          ).catch(console.error);
+        }
+      });
+      // Debug logging for winner stats update
+      console.log('Winner socket ID:', winner);
+      console.log('Winner DB user ID:', socketToDbUser[winner]);
+      console.log('Lobby players:', lobby.players);
+      console.log('DB user IDs:', lobby.players.map(id => socketToDbUser[id]));
+
+      // Increment games_won for the winner (if authenticated)
+      const winnerDbId = socketToDbUser[winner];
+      if (winnerDbId) {
         pool.query(
-          'UPDATE users SET games_played = COALESCE(games_played,0)+1 WHERE id = $1',
-          [dbId]
+          'UPDATE users SET games_won = COALESCE(games_won,0)+1 WHERE id = $1',
+          [winnerDbId]
         ).catch(console.error);
       }
-    });
-    // Debug logging for winner stats update
-    console.log('Winner socket ID:', winner);
-    console.log('Winner DB user ID:', socketToDbUser[winner]);
-    console.log('Lobby players:', lobby.players);
-    console.log('DB user IDs:', lobby.players.map(id => socketToDbUser[id]));
-
-    // Increment games_won for the winner (if authenticated)
-    const winnerDbId = socketToDbUser[winner];
-    if (winnerDbId) {
-      pool.query(
-        'UPDATE users SET games_won = COALESCE(games_won,0)+1 WHERE id = $1',
-        [winnerDbId]
-      ).catch(console.error);
+      // --- END STATS UPDATE ---
+      // Clean up voting state immediately to prevent double-counting
+      delete votesByLobby[lobbyId];
     }
-    // --- END STATS UPDATE ---
-
-    // Clean up
-    delete votesByLobby[lobbyId];
   });
   
 
