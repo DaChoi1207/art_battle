@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+
 import { io } from 'socket.io-client';
 import socket from '../socket';
 import ColorPopover from './ColorPopover';
@@ -39,6 +40,7 @@ function WebcamFeed({ roomId, dominance = 'right', setTimeLeft: setTimeLeftParen
   const canvasRef = useRef(null);
   const remoteCanvasesRef = useRef({});
   const drawingCanvasRef = useRef(null);
+  const handOverlayCanvasRef = useRef(null); // NEW: overlay canvas for hand skeleton
   const lastDrawingPosRef = useRef(null);
   const brushSizeRef = useRef(4);
   // --- Color Palette State ---
@@ -338,34 +340,32 @@ useEffect(() => {
                 '#ffbe0b', // soft yellow
                 '#a685e2'  // soft purple
               ];
-              // Artistic connectors: rainbow pastel gradient by index
-              window.drawConnectors(ctx, landmarks, HAND_CONNECTIONS, {
-                color: pastelColors[i % pastelColors.length],
-                lineWidth: 3,
-              });
-              // Artistic landmarks: soft color, drop shadow
-              window.drawLandmarks(ctx, landmarks, {
-                color: pastelColors[(i+3) % pastelColors.length],
-                lineWidth: 2,
-                fillColor: pastelColors[(i+6) % pastelColors.length],
-                radius: (data) => 3,
-                // Custom draw: add drop shadow
-                shadowColor: '#a685e2',
-                shadowBlur: 12,
-              });
-              // Add drop shadow manually for browsers that don't support shadow in drawLandmarks
-              // (If needed: draw circles with shadow)
-              // for (const pt of landmarks) {
-              //   ctx.save();
-              //   ctx.beginPath();
-              //   ctx.arc(pt.x * canvas.width, pt.y * canvas.height, 7, 0, 2 * Math.PI);
-              //   ctx.shadowColor = '#a685e2';
-              //   ctx.shadowBlur = 10;
-              //   ctx.fillStyle = pastelColors[(i+6) % pastelColors.length];
-              //   ctx.globalAlpha = 0.85;
-              //   ctx.fill();
-              //   ctx.restore();
-              // }
+              // Draw hand landmarks
+              // Draw on dedicated overlay canvas so hand is always visible
+              const overlayCanvas = handOverlayCanvasRef.current;
+              const overlayCtx = overlayCanvas ? overlayCanvas.getContext('2d') : null;
+              if (overlayCtx) overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+              if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && overlayCtx) {
+                overlayCtx.save();
+                overlayCtx.scale(-1, 1);
+                overlayCtx.translate(-overlayCanvas.width, 0);
+                for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+                  window.drawConnectors(overlayCtx, results.multiHandLandmarks[i], HAND_CONNECTIONS, {
+                    color: pastelColors[(i+3) % pastelColors.length],
+                    lineWidth: 2,
+                  });
+                  window.drawLandmarks(overlayCtx, results.multiHandLandmarks[i], {
+                    color: pastelColors[(i+3) % pastelColors.length],
+                    lineWidth: 2,
+                    fillColor: pastelColors[(i+6) % pastelColors.length],
+                    radius: (data) => 3,
+                    // Custom draw: add drop shadow
+                    shadowColor: '#a685e2',
+                    shadowBlur: 12,
+                  });
+                }
+                overlayCtx.restore();
+              }
             }
 
             // Removed on-canvas gesture text. Notifications are shown below webcam.
@@ -770,15 +770,13 @@ useEffect(() => {
           Tip: Gestures are used to <b>swap</b> between colors.
         </div>
       </div>
-  
+
       {/* Drawing Canvas + Video Feed */}
       <div className="flex flex-col md:flex-row gap-8 w-full justify-center items-start">
         {/* Left column: camera + notification */}
         <div className="flex flex-col items-center">
           <div
-            className="relative flex flex-col items-center justify-center
-                       bg-gradient-to-br from-[#fff1e6]/80 via-[#cddafd]/80 to-[#bee1e6]/80
-                       rounded-2xl shadow-lg border-2 border-[#e2ece9] p-4 mb-2"
+            className="relative flex flex-col items-center justify-center bg-gradient-to-br from-[#fff1e6]/80 via-[#cddafd]/80 to-[#bee1e6]/80 rounded-2xl shadow-lg border-2 border-[#e2ece9] p-4 mb-2"
             style={{ width: 660, minHeight: 500 }}
           >
             <div className="text-[#5b5f97] font-bold mb-2 text-lg flex items-center gap-2">
@@ -804,11 +802,17 @@ useEffect(() => {
                 width={640}
                 height={480}
                 className="rounded-xl"
-                style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
+                style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', zIndex: 2 }}
+              />
+              <canvas
+                ref={handOverlayCanvasRef}
+                width={640}
+                height={480}
+                className="rounded-xl"
+                style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', zIndex: 3 }}
               />
             </div>
           </div>
-  
           {/* Gesture Notification (white background) */}
           {/* Mode + Color notification bar under camera/canvas */}
           <div className="w-full flex flex-row items-center gap-3 mt-2 mb-4" style={{ maxWidth: 660 }}>
@@ -831,7 +835,7 @@ useEffect(() => {
             </div>
           </div>
         </div>
-  
+
         {/* Video Call Grid for Other Players */}
         <div className="flex-1 flex flex-col items-center">
           <div className="text-[#5b5f97] font-bold mb-2 text-lg flex items-center gap-2">
@@ -843,9 +847,11 @@ useEffect(() => {
           />
         </div>
       </div>
+      <div className="text-xs mt-1 text-[#a685e2] font-medium">
+        Tip: Gestures are used to <b>swap</b> between colors.
+      </div>
     </div>
   );
-  
 }
 
 export default WebcamFeed;
