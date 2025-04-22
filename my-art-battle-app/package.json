@@ -16,6 +16,7 @@
     "express": "^5.1.0",
     "express-session": "^1.18.1",
     "framer-motion": "^12.7.4",
+    "node-fetch": "^2.7.0",
     "passport": "^0.7.0",
     "passport-discord": "^0.1.4",
     "passport-google-oauth20": "^2.0.0",

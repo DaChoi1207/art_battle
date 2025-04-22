@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import socket from '../socket';
 import ColorPopover from './ColorPopover';
+import { fetchAiColors } from '../utils/aiColorsClient';
 
 
 //const socket = io('http://localhost:3001'); // Socket.io connection (adjust port if necessary)
@@ -14,6 +15,14 @@ import ColorPopover from './ColorPopover';
 // });
 
 function WebcamFeed({ roomId, dominance = 'right', setTimeLeft: setTimeLeftParent, setGameOver: setGameOverParent }) {
+  const [showAiHelp, setShowAiHelp] = useState(false);
+  // --- AI Color Picker State ---
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
+  // Optionally, pass drawingPrompt as a prop or get from context if needed
+  const drawingPrompt = "your drawing subject"; // TODO: replace with actual prompt if available
+
   const yoloHoldRef = React.useRef(null);
   // Notification state for gesture and color
   const [gestureNotification, setGestureNotification] = useState("");
@@ -592,23 +601,17 @@ useEffect(() => {
         <div className="mb-1 text-[#5b5f97] font-bold text-lg flex items-center gap-2">
           <span role="img" aria-label="palette">🎨</span> Change your Palette!
         </div>
-        <div className="flex gap-3 justify-center">
+        <div className="flex flex-row gap-3 items-center justify-center mt-2 mb-2">
           {colorPalette.map((color, idx) => (
-            <div key={idx} className="flex flex-col items-center relative">
+            <div key={idx} className="relative">
               <button
-                className={`w-10 h-10 rounded-full border-4 shadow-lg transition-all duration-150 ${
-                  selectedColorIdx === idx ? 'border-[#ffbe0b] scale-110' : 'border-[#e2ece9]'
-                }`}
-                style={{
-                  background: color,
-                  outline: selectedColorIdx === idx ? '2px solid #8338ec' : 'none'
-                }}
+                className={`w-10 h-10 rounded-full border-2 shadow-lg transition-transform duration-100 ${selectedColorIdx === idx ? 'scale-110 border-[#a685e2]' : 'border-[#e2ece9]'}`}
+                style={{ background: color }}
                 onClick={() => setSelectedColorIdx(idx)}
-                aria-label={`Select color ${idx+1}`}
+                aria-label={`Pick color ${idx + 1}`}
               />
               {selectedColorIdx === idx && (
                 <ColorPopover onClose={() => setSelectedColorIdx(-1)}>
-                  <div className="mb-2 text-xs text-[#5b5f97] font-semibold">Edit Color</div>
                   <input
                     type="color"
                     value={color}
@@ -617,42 +620,86 @@ useEffect(() => {
                       newPalette[idx] = e.target.value;
                       setColorPalette(newPalette);
                     }}
-                    className="w-10 h-8 rounded border-2 border-[#e2ece9] cursor-pointer mb-2"
-                    aria-label={`Pick color ${idx+1}`}
+                    className="w-24 h-12 rounded-lg border-2 border-[#e2ece9] focus:border-[#a685e2]"
                   />
-                  <div className="mb-1 text-xs text-[#a685e2] font-medium">Or pick from below!</div>
-                  <div className="flex flex-wrap gap-1 justify-center max-w-[140px]">
-                    {[
-                      '#000000', '#808080', '#C0C0C0', '#FFFFFF',
-                      '#800000', '#A52A2A', '#8B4513', '#D2691E',
-                      '#FF0000', '#FFA500', '#FFFF00', '#008000',
-                      '#00FFFF', '#0000FF', '#800080', '#FFC0CB',
-                      '#FFD700', '#A9A9A9', '#B22222', '#228B22',
-                      '#F5DEB3', '#F08080', '#20B2AA', '#6495ED',
-                    ].map((basicColor, i) => (
-                      <button
-                        key={basicColor + i}
-                        className="w-6 h-6 rounded-full border-2 border-[#e2ece9] shadow hover:scale-110 transition-all"
-                        style={{ background: basicColor }}
-                        onClick={() => {
-                          const newPalette = [...colorPalette];
-                          newPalette[idx] = basicColor;
-                          setColorPalette(newPalette);
-                        }}
-                        aria-label={`Quick pick ${basicColor}`}
-                      />
-                    ))}
-                  </div>
-                  <button
-                    className="mt-2 px-3 py-1 rounded bg-gradient-to-r from-[#cddafd] via-[#bee1e6] to-[#fad2e1] text-[#5b5f97] font-bold shadow hover:shadow-lg border border-[#e2ece9] text-xs"
-                    onClick={() => setSelectedColorIdx(-1)}
-                  >
-                    Close
-                  </button>
                 </ColorPopover>
               )}
             </div>
           ))}
+          {/* AI Color Suggestion UI */}
+          <div className="flex flex-col items-start ml-6" style={{ minWidth: 220 }}>
+            <form
+              className="flex flex-row gap-2 items-center"
+              onSubmit={async e => {
+                e.preventDefault();
+                if (!aiPrompt.trim()) return;
+                setAiLoading(true);
+                setAiError("");
+                try {
+                  const aiColors = await fetchAiColors({ prompt: aiPrompt, drawingPrompt, currentPalette: colorPalette });
+                  if (Array.isArray(aiColors) && aiColors.length === 5) {
+                    setColorPalette(aiColors);
+                  } else {
+                    setAiError("AI did not return 5 colors.");
+                  }
+                } catch (err) {
+                  setAiError("Failed to fetch colors.");
+                } finally {
+                  setAiLoading(false);
+                }
+              }}
+            >
+              <input
+                type="text"
+                placeholder="Ask AI for palette..."
+                value={aiPrompt}
+                onChange={e => setAiPrompt(e.target.value)}
+                className="w-36 md:w-48 px-3 py-2 border-2 border-[#e2ece9] rounded-lg focus:border-[#a685e2] text-sm"
+                disabled={aiLoading}
+              />
+              <button
+                type="submit"
+                disabled={aiLoading || !aiPrompt.trim()}
+                className="px-3 py-2 rounded-lg bg-gradient-to-r from-[#a685e2] to-[#e2ece9] text-white font-semibold shadow hover:from-[#8f5ee2] hover:to-[#bfc9d1] transition disabled:opacity-60"
+                style={{ minWidth: 44 }}
+              >
+                {aiLoading ? '...' : 'AI 🎨'}
+              </button>
+            </form>
+            {aiError && <div className="text-xs text-red-500 mt-1">{aiError}</div>}
+            <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+              Change your colour palette with AI!
+              <button
+                type="button"
+                aria-label="AI Color Help"
+                className="ml-1 text-[#a685e2] hover:text-[#6c47b7] focus:outline-none"
+                onClick={() => setShowAiHelp(true)}
+                style={{ fontSize: 16, lineHeight: 1 }}
+              >
+                <span style={{fontWeight: 'bold', fontSize: 18, verticalAlign: 'middle'}}>?</span>
+              </button>
+            </div>
+            {showAiHelp && (
+              <div className="absolute z-50 bg-white border-2 border-[#e2ece9] shadow-xl rounded-xl p-4 text-sm text-gray-700 mt-2 max-w-xs animate-fade-in" style={{ left: 0, right: 0, margin: '0 auto' }}>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-semibold text-[#a685e2]">AI Color Help</span>
+                  <button onClick={() => setShowAiHelp(false)} aria-label="Close Help" className="text-gray-400 hover:text-gray-700 font-bold" style={{ fontSize: 18 }}>&times;</button>
+                </div>
+                <ul className="list-disc pl-5 mb-2">
+                  <li>Type a request to change your color palette.</li>
+                  <li>You can ask to change specific colors by number or description.</li>
+                  <li>The AI will keep other colors the same.</li>
+                  <li>OR... enter any prompt and replace all colours at once!</li>
+                </ul>
+                <div className="italic text-xs text-gray-500 mb-1">Examples:</div>
+                <div className="text-xs text-gray-600">
+                  <div>“Change colour 3 to a darker blue”</div>
+                  <div>“Change colours 4 and 5 to something related to flowers”</div>
+                  <div>“Make colour 2 a nicer red”</div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         <div className="text-xs mt-1 text-[#a685e2] font-medium">
           Tip: Gestures are used to <b>swap</b> between colors.
@@ -663,7 +710,6 @@ useEffect(() => {
       <div className="flex flex-col md:flex-row gap-8 w-full justify-center items-start">
         {/* Left column: camera + notification */}
         <div className="flex flex-col items-center">
-          {/* Drawing Canvas Area */}
           <div
             className="relative flex flex-col items-center justify-center
                        bg-gradient-to-br from-[#fff1e6]/80 via-[#cddafd]/80 to-[#bee1e6]/80

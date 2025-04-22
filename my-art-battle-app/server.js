@@ -674,6 +674,29 @@ app.use((req, res, next) => {
   next();
 });
 
+// --- AI Color Suggestion Endpoint ---
+const { getColorsFromLLM } = require('./utils/aiColors');
+app.post('/api/ai-colors', express.json(), async (req, res) => {
+  const { prompt, drawingPrompt, currentPalette } = req.body;
+  if (!prompt || !drawingPrompt) return res.status(400).json({ error: 'Missing prompt or drawingPrompt' });
+  try {
+    const apiKey = process.env.GROQ_API_KEY;
+    const colors = await getColorsFromLLM({
+      userPrompt: prompt,
+      drawingPrompt,
+      currentPalette,
+      apiKey
+    });
+    if (!Array.isArray(colors) || colors.length !== 5) {
+      return res.status(502).json({ error: 'AI did not return 5 colors', colors });
+    }
+    res.json({ colors });
+  } catch (err) {
+    console.error('AI color error:', err);
+    res.status(500).json({ error: 'AI color service failed' });
+  }
+});
+
 // --- API endpoint for updating stats from Gallery page ---
 app.post('/api/update-stats', express.json(), async (req, res) => {
   const { userId, won } = req.body;
