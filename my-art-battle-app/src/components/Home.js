@@ -22,20 +22,20 @@ export default function Home() {
 
   // Check authentication on mount
   useEffect(() => {
-    fetch('https://dcbg.win/profile', { credentials: 'include' })
+    fetch(`${process.env.REACT_APP_API_URL}/profile`, { credentials: 'include' })
       .then(res => res.ok ? res.json() : null)
       .then(profile => {
-  setUser(profile);
-  if (profile && profile.id) {
-    socket.emit('identify-user', profile.id);
-  }
-});
+        setUser(profile);
+        if (profile && profile.id) {
+          socket.emit('identify-user', profile.id);
+        }
+      });
 
     // Listen for OAuth success message from popup
     function handleOAuthMessage(e) {
       // Only accept messages from your backend origin in production
-      if (e.origin === "https://dcbg.win" && e.data === "oauth-success") {
-        fetch('https://dcbg.win/profile', { credentials: 'include' })
+      if (e.origin === process.env.REACT_APP_API_URL && e.data === "oauth-success") {
+        fetch(`${process.env.REACT_APP_API_URL}/profile`, { credentials: 'include' })
           .then(res => res.ok ? res.json() : null)
           .then(profile => {
             console.log('[Home.js] OAuth /profile fetch result:', profile);
@@ -52,19 +52,18 @@ export default function Home() {
 
   const handleLogin = (provider) => {
     openOAuthPopup(provider, () => {
-      fetch('https://dcbg.win/profile', { credentials: 'include' })
-        .then(res => res.ok ? res.json() : null)
+      fetch(`${process.env.REACT_APP_API_URL}/profile`, { credentials: 'include' }).then(res => res.ok ? res.json() : null)
         .then(profile => {
-  setUser(profile);
-  if (profile && profile.id) {
-    socket.emit('identify-user', profile.id);
-  }
-});
+          setUser(profile);
+          if (profile && profile.id) {
+            socket.emit('identify-user', profile.id);
+          }
+        });
     });
   };
 
   const handleLogout = () => {
-    fetch('https://dcbg.win/logout', { credentials: 'include' })
+    fetch(`${process.env.REACT_APP_API_URL}/logout`, { credentials: 'include' })
       .then(() => setUser(null));
   };
 
@@ -262,14 +261,14 @@ export default function Home() {
                     <DiscordIcon className="w-5 h-5 relative top-[1px]" /> Login with Discord
                   </button>
                   <div className="mt-4 text-xs text-gray-600 text-center">
-                    Or continue as guest<br/>
+                    Or continue as guest<br />
                   </div>
                 </>
               ) : (
                 <div className="flex flex-col items-center w-full">
                   <div className="flex items-center justify-center mb-4 w-full">
-  <span className="title-font tracking-wide text-2xl text-gray-800">Welcome, {user.username}!</span>
-</div>
+                    <span className="title-font tracking-wide text-2xl text-gray-800">Welcome, {user.username}!</span>
+                  </div>
                   {/* <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
                     <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-gray-100">
                       {user.auth_provider === 'google' && <span className='text-[#4285F4]'><svg width='16' height='16' viewBox='0 0 48 48'><path fill='#4285F4' d='M44.5 20H24v8.5h11.7C34.5 32.6 29.7 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c2.7 0 5.1.9 7 2.4l6.3-6.3C33.5 5.6 28.1 3.5 24 3.5 12.8 3.5 3.5 12.8 3.5 24S12.8 44.5 24 44.5c11.2 0 20.5-9.3 20.5-20.5 0-1.4-.1-2.7-.3-4z'/><path fill='#34A853' d='M6.3 14.7l7 5.1C15.5 16.2 19.4 13.5 24 13.5c2.7 0 5.1.9 7 2.4l6.3-6.3C33.5 5.6 28.1 3.5 24 3.5c-7.3 0-13.5 4.2-16.7 10.2z'/><path fill='#FBBC05' d='M24 44.5c5.7 0 10.5-1.9 14.1-5.1l-6.5-5.3c-2 1.3-4.5 2-7.6 2-5.7 0-10.5-3.9-12.2-9.1l-7 5.4C7.7 39.8 15.3 44.5 24 44.5z'/><path fill='#EA4335' d='M44.5 20H24v8.5h11.7c-1.1 3.1-4.5 7.5-11.7 7.5-6.6 0-12-5.4-12-12s5.4-12 12-12c2.7 0 5.1.9 7 2.4l6.3-6.3C33.5 5.6 28.1 3.5 24 3.5c-7.3 0-13.5 4.2-16.7 10.2z'/></svg></span>}

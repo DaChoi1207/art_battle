@@ -1,7 +1,7 @@
 // src/utils/aiColorsClient.js
 // Client helper to fetch AI colors from backend
 export async function fetchAiColors({ prompt, drawingPrompt, currentPalette }) {
-  const res = await fetch('https://dcbg.win/api/ai-colors', {
+  const res = await fetch(`${process.env.REACT_APP_API_URL}/api/ai-colors`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt, drawingPrompt, currentPalette })

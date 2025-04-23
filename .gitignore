@@ -47,3 +47,6 @@ Thumbs.db
 .windsurfignore
 .windsurfstate
 .windsurfworkspace
+
+# Test vs Prod
+my-art-battle-app/test-vs-prod.txt

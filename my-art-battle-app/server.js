@@ -11,17 +11,16 @@ app.set('trust proxy', 1);
 
 // CORS setup for frontend (React on localhost:3000)
 const cors = require('cors');
+const allowedOrigins = process.env.CLIENT_ORIGIN.split(',');
 app.use(cors({
-  origin: [
-    'https://dcbg.win',
-    'https://d3jmnopgl2vwc8.cloudfront.net'
-  ],
+  origin: allowedOrigins,
   credentials: true
 }));
 
+
 const isProd = process.env.NODE_ENV === 'production';
-const baseUrl = isProd ? 'https://dcbg.win' : 'http://localhost:3001';
-const clientOrigin = isProd ? 'https://d3jmnopgl2vwc8.cloudfront.net' : 'http://localhost:3000';
+const baseUrl = process.env.BASE_URL;
+const clientOrigin = process.env.CLIENT_ORIGIN;
 
 const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
@@ -29,13 +28,25 @@ const pgSession = require('connect-pg-simple')(session);
 // At the top of server.js, after your other imports:
 const { Pool } = require('pg');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false // Needed for AWS RDS by default
-  }
-});
+//PRODUCTION POOL
+// const pool = new Pool({
+//   connectionString: process.env.DATABASE_URL,
+//   ssl: {
+//     rejectUnauthorized: false // Needed for AWS RDS by default
+//   }
+// });
 
+//DEVELOPMENT POOL
+const pool = new Pool(
+  isProd
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }
+      }
+    : {
+        connectionString: process.env.DATABASE_URL
+      }
+);
 
 // Add this route anywhere after your app is defined:
 app.get('/db-test', async (req, res) => {
@@ -263,7 +274,7 @@ pool.query('SELECT NOW()', (err, res) => {
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: 'https://d3jmnopgl2vwc8.cloudfront.net', // React dev server
+    origin: process.env.CLIENT_ORIGIN.split(','),
     credentials: true
   }
 });
