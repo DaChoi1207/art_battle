@@ -64,30 +64,6 @@ export default function Gallery() {
     return () => socket.off('start-game', onStartGame);
   }, [id, navigate, handedness]);
 
-  // likeCounts[artistId] = total number of likes they’ve received
-  const [likeCounts, setLikeCounts] = useState({});
-  // likedByMe[artistId] = whether this user clicked “like” on that artwork
-  const [likedByMe, setLikedByMe] = useState({});
-  // Store randomized heart params per artwork (playerId)
-  const heartParamsRef = React.useRef({});
-
-  // listen for backend “someone liked this artist” events
-  useEffect(() => {
-    socket.on('artwork-liked', ({ artistId, count }) => {
-      setLikeCounts(prev => ({ ...prev, [artistId]: count }));
-    });
-    return () => {
-      socket.off('artwork-liked');
-    };
-  }, []);
-
-  const handleLike = artistId => {
-    setLikedByMe(prev => {
-      const newLiked = !prev[artistId];
-      socket.emit('like-artwork', { galleryId: id, artistId, liked: newLiked });
-      return { ...prev, [artistId]: newLiked };
-    });
-  };
 
 
   const handlePlayAgain = () => {
@@ -117,7 +93,6 @@ export default function Gallery() {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-10 w-full max-w-6xl fun-font">
         {Object.entries(artworks).map(([playerId, data], idx) => {
           const isWinner = playerId === winner;
-          const hearts = likeCounts[playerId] || 0;
           return (
             <motion.div
               key={playerId}
@@ -127,62 +102,12 @@ export default function Gallery() {
               animate={{ scale: 1, opacity: 1 }}
               whileHover={{ scale: 1.05, boxShadow: "0 8px 36px #a2d2ff55" }}
             >
-              {/* Like button + trophy */}
+              {/* Winner trophy only */}
               <div className="absolute top-2 right-2 flex gap-1 z-10">
-                <button
-                  className={`text-2xl transition-all ${likedByMe[playerId] ? 'text-pink-500 scale-110' : 'text-[#b8c1ec] hover:text-pink-400'}`}
-                  onClick={() => handleLike(playerId)}
-                  aria-label={likedByMe[playerId] ? 'Unlike' : 'Like'}
-                >
-                  {likedByMe[playerId] ? '❤️' : '🤍'}
-                </button>
                 {isWinner && <span className="text-2xl">🏆</span>}
               </div>
 
-              {/* Falling hearts: only visible to the *artist* (socket.id) */}
-              {socket.id === playerId && hearts > 0 && (
-                <div className="pointer-events-none absolute inset-0 w-full h-full z-20">
-                  {(() => {
-                    if (!heartParamsRef.current[playerId]) heartParamsRef.current[playerId] = [];
-                    const paramsArr = heartParamsRef.current[playerId];
-                    while (paramsArr.length < hearts) {
-                      paramsArr.push({
-                        left: Math.random() * 80 + 10,
-                        topStart: Math.random() * 40,
-                        fallDistance: 60 + Math.random() * 30,
-                        duration: (1 + Math.random() * 0.4).toFixed(2),
-                        rotate: Math.random() * 40 - 20,
-                        drift: Math.random() * 60 - 30,
-                        delay: paramsArr.length * 0.18 + Math.random() * 0.12
-                      });
-                    }
-                    if (paramsArr.length > hearts) paramsArr.length = hearts;
-                    return paramsArr.map((params, i) => (
-                      <span
-                        key={i}
-                        className="absolute text-pink-400 text-4xl"
-                        style={{
-                          left: `${params.left}%`,
-                          top: `${params.topStart}%`,
-                          animation: `heart-fall-custom-${playerId}-${i} ${params.duration}s cubic-bezier(0.45,0.1,0.6,1.1)`,
-                          animationDelay: `${params.delay}s`,
-                          transform: `rotate(${params.rotate}deg) translateX(${params.drift}px)`
-                        }}
-                      >
-                        ❤️
-                        <style>{`
-                          @keyframes heart-fall-custom-${playerId}-${i} {
-                            0% { opacity: 0; transform: translateY(0) scale(1.2) rotate(${params.rotate}deg) translateX(${params.drift}px); }
-                            10% { opacity: 1; }
-                            80% { opacity: 1; transform: translateY(${params.fallDistance}%) scale(1.1) rotate(${params.rotate + 16}deg) translateX(${params.drift + 10}px); }
-                            100% { opacity: 0; transform: translateY(${params.fallDistance + 30}%) scale(0.9) rotate(${params.rotate - 8}deg) translateX(${params.drift - 8}px); }
-                          }
-                        `}</style>
-                      </span>
-                    ));
-                  })()}
-                </div>
-              )}
+
 
               {/* Artwork */}
               <img
@@ -195,15 +120,11 @@ export default function Gallery() {
                 {data.nickname || playerId}
               </div>
 
-              <div className="mt-2 flex items-center gap-2">
-                <span className="text-pink-400 text-xl">{hearts}</span>
-                <span className="text-pink-400 text-lg">❤️</span>
-                {isWinner && (
-                  <span className="ml-2 px-3 py-1 bg-gradient-to-r from-yellow-100 to-yellow-300 rounded-full text-yellow-700 font-bold text-base fun-font animate-pulse shadow">
-                    Winner!
-                  </span>
-                )}
-              </div>
+              {isWinner && (
+                <div className="ml-2 px-3 py-1 bg-gradient-to-r from-yellow-100 to-yellow-300 rounded-full text-yellow-700 font-bold text-base fun-font animate-pulse shadow mt-2">
+                  Winner!
+                </div>
+              )}
 
               {/* Winner confetti/shine effect */}
               {isWinner && (
