@@ -3,7 +3,7 @@ export function openOAuthPopup(provider, onSuccess) {
   const width = 500, height = 600;
   const left = window.screenX + (window.outerWidth - width) / 2;
   const top = window.screenY + (window.outerHeight - height) / 2;
-  const url = `http://localhost:3001/auth/${provider}`;
+  const url = `https://dcbg.win/auth/${provider}`;
   const win = window.open(
     url,
     `${provider}-login`,

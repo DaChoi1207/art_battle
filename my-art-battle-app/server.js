@@ -9,13 +9,36 @@ const app = express(); // <-- Initialize app before using it
 // CORS setup for frontend (React on localhost:3000)
 const cors = require('cors');
 app.use(cors({
-  origin: 'http://localhost:3000',
-  credentials: true,
+  origin: [
+    'https://dcbg.win',
+    'https://d3jmnopgl2vwc8.cloudfront.net'
+  ],
+  credentials: true
 }));
 
 const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
-const pool = require('./db');
+
+// At the top of server.js, after your other imports:
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false // Needed for AWS RDS by default
+  }
+});
+
+
+// Add this route anywhere after your app is defined:
+app.get('/db-test', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW()');
+    res.json({ success: true, time: result.rows[0].now });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // --- SESSION MIDDLEWARE SETUP (Postgres) ---
 // For local development, use secure: false and sameSite: 'lax'.
@@ -233,7 +256,7 @@ pool.query('SELECT NOW()', (err, res) => {
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: 'http://localhost:3000', // React dev server
+    origin: 'https://d3jmnopgl2vwc8.cloudfront.net', // React dev server
     credentials: true
   }
 });
@@ -744,6 +767,14 @@ app.post('/api/update-stats', express.json(), async (req, res) => {
   }
 });
 
-server.listen(3001, () => {
-  console.log('Server listening on port 3001');
+// HEALTH CHECK ROUTE (should be here, just before catch-all)
+app.get('/', (req, res) => res.sendStatus(200));
+
+// CATCH-ALL HANDLER (should be very last)
+app.use((req, res) => {
+  res.status(404).send('Not Found');
+});
+
+server.listen(3001, '0.0.0.0', () => {
+  console.log('Server listening on 0.0.0.0:3001');
 });

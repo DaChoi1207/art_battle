@@ -22,7 +22,7 @@ export default function Home() {
 
   // Check authentication on mount
   useEffect(() => {
-    fetch('http://localhost:3001/profile', { credentials: 'include' })
+    fetch('https://dcbg.win/profile', { credentials: 'include' })
       .then(res => res.ok ? res.json() : null)
       .then(profile => {
   setUser(profile);
@@ -34,9 +34,9 @@ export default function Home() {
     // Listen for OAuth success message from popup
     function handleOAuthMessage(e) {
       // accept messages coming from your backend origin
-      if ((e.origin === "http://localhost:3001" || e.origin === window.location.origin)
+      if ((e.origin === "https://dcbg.win" || e.origin === window.location.origin)
         && e.data === "oauth-success") {
-        fetch('http://localhost:3001/profile', { credentials: 'include' })
+        fetch('https://dcbg.win/profile', { credentials: 'include' })
           .then(res => res.ok ? res.json() : null)
           .then(profile => {
             console.log('[Home.js] OAuth /profile fetch result:', profile);
@@ -53,7 +53,7 @@ export default function Home() {
 
   const handleLogin = (provider) => {
     openOAuthPopup(provider, () => {
-      fetch('http://localhost:3001/profile', { credentials: 'include' })
+      fetch('https://dcbg.win/profile', { credentials: 'include' })
         .then(res => res.ok ? res.json() : null)
         .then(profile => {
   setUser(profile);
@@ -65,7 +65,7 @@ export default function Home() {
   };
 
   const handleLogout = () => {
-    fetch('http://localhost:3001/logout', { credentials: 'include' })
+    fetch('https://dcbg.win/logout', { credentials: 'include' })
       .then(() => setUser(null));
   };
 

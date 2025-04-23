@@ -35,7 +35,7 @@ export default function ProfileMenu({ user, onLogout, onProfileUpdate }) {
 
   const handleSave = async (changes) => {
     try {
-      const res = await fetch('http://localhost:3001/profile', {
+      const res = await fetch('https://dcbg.win/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

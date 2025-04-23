@@ -1,7 +1,7 @@
 {
   "name": "my-art-battle-app",
   "version": "0.1.0",
-  "proxy": "http://localhost:3001",
+  "proxy": "https://dcbg.win",
   "private": true,
   "dependencies": {
     "@mediapipe/camera_utils": "^0.3.1675466862",
@@ -17,11 +17,12 @@
     "express": "^5.1.0",
     "express-session": "^1.18.1",
     "framer-motion": "^12.7.4",
+    "knex": "^3.1.0",
     "node-fetch": "^2.7.0",
     "passport": "^0.7.0",
     "passport-discord": "^0.1.4",
     "passport-google-oauth20": "^2.0.0",
-    "pg": "^8.14.1",
+    "pg": "^8.15.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-icons": "^5.5.0",
