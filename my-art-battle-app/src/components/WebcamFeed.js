@@ -847,9 +847,6 @@ useEffect(() => {
           />
         </div>
       </div>
-      <div className="text-xs mt-1 text-[#a685e2] font-medium">
-        Tip: Gestures are used to <b>swap</b> between colors.
-      </div>
     </div>
   );
 }
