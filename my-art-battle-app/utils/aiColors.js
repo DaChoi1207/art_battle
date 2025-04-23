@@ -6,8 +6,7 @@ const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const MODEL = 'llama-3.1-8b-instant'; // Free, production Groq model
 
 function buildSystemPrompt(drawingPrompt, currentPalette) {
-  let base = `You are a professional colour picker. The user has a current palette: ${Array.isArray(currentPalette) ? JSON.stringify(currentPalette) : '[unknown]'}. The drawing subject is: ${drawingPrompt}. When the user gives a request, only change the colors they specify (by index or description), and keep all other colors the same. Always return a JSON array of 5 hex colors, e.g. ["#FF5733", "#123456", ...]. Do not explain your answer, just return the array.`;
-  return base;
+  return `You are a professional color analyst and palette designer. Given the drawing subject: "${drawingPrompt}", and the current palette: ${Array.isArray(currentPalette) ? JSON.stringify(currentPalette) : '[unknown]'}, generate exactly 5 distinct, visually harmonious hex color codes that best fit the prompt and subject. Only change colors the user specifies (by index or description), keep others the same. If the user does not specify any color, generate a completely new harmonious palette. Output ONLY a JSON array of 5 hex codes, e.g. ["#FF5733", "#123456", ...]. Do not include any explanations or extra text.`;
 }
 
 async function getColorsFromLLM({ userPrompt, drawingPrompt, currentPalette, apiKey }) {

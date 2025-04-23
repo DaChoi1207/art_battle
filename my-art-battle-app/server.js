@@ -6,6 +6,9 @@ const { Server } = require('socket.io');
 
 const app = express(); // <-- Initialize app before using it
 
+// Near the top, after you create your Express app:
+app.set('trust proxy', 1);
+
 // CORS setup for frontend (React on localhost:3000)
 const cors = require('cors');
 app.use(cors({
@@ -15,6 +18,10 @@ app.use(cors({
   ],
   credentials: true
 }));
+
+const isProd = process.env.NODE_ENV === 'production';
+const baseUrl = isProd ? 'https://dcbg.win' : 'http://localhost:3001';
+const clientOrigin = isProd ? 'https://d3jmnopgl2vwc8.cloudfront.net' : 'http://localhost:3000';
 
 const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
@@ -57,8 +64,8 @@ const sessionMiddleware = session({
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    secure: false, // For local dev only. Set to true in production with HTTPS
-    sameSite: 'lax', // 'lax' is best for localhost. Use 'none' with HTTPS in prod if needed
+    secure: isProd, // true in production
+    sameSite: isProd ? 'none' : 'lax', // 'none' for cross-site cookies in prod
   }
 });
 // use it for Express
@@ -81,12 +88,13 @@ passport.deserializeUser(async (id, done) => {
 });
 
 // Google OAuth
+console.log('Google OAuth callback URL:', `${baseUrl}/auth/google/callback`);
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: "/auth/google/callback"
-  },
+  clientID: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  callbackURL: `${baseUrl}/auth/google/callback`
+},
   async (accessToken, refreshToken, profile, done) => {
     console.log('DEBUG: GoogleStrategy verify function called');
     try {
@@ -124,11 +132,11 @@ passport.use(new GoogleStrategy({
 // Discord OAuth
 const DiscordStrategy = require('passport-discord').Strategy;
 passport.use(new DiscordStrategy({
-    clientID: process.env.DISCORD_CLIENT_ID,
-    clientSecret: process.env.DISCORD_CLIENT_SECRET,
-    callbackURL: "/auth/discord/callback",
-    scope: ['identify', 'email']
-  },
+  clientID: process.env.DISCORD_CLIENT_ID,
+  clientSecret: process.env.DISCORD_CLIENT_SECRET,
+  callbackURL: `${baseUrl}/auth/discord/callback`,
+  scope: ['identify', 'email']
+},
   async (accessToken, refreshToken, profile, done) => {
     try {
       // Try to find the user by Discord ID or email
@@ -182,11 +190,10 @@ app.get('/auth/google/callback', (req, res, next) => {
     // For popup-based login: notify opener and close window
     res.send(`
       <script>
-        // send a message to the opener window
-        window.opener.postMessage('oauth-success', 'http://localhost:3000');
+        window.opener.postMessage('oauth-success', '${clientOrigin}');
         window.close();
       </script>
-        `);
+    `);
   }
 );
 
@@ -202,7 +209,7 @@ app.get('/auth/discord/callback',
     // For popup-based login: notify opener and close window
     res.send(`
       <script>
-        window.opener.postMessage('oauth-success', 'http://localhost:3000');
+        window.opener.postMessage('oauth-success', '${clientOrigin}');
         window.close();
       </script>
     `);

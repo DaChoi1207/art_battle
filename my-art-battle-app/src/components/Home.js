@@ -33,18 +33,17 @@ export default function Home() {
 
     // Listen for OAuth success message from popup
     function handleOAuthMessage(e) {
-      // accept messages coming from your backend origin
-      if ((e.origin === "https://dcbg.win" || e.origin === window.location.origin)
-        && e.data === "oauth-success") {
+      // Only accept messages from your backend origin in production
+      if (e.origin === "https://dcbg.win" && e.data === "oauth-success") {
         fetch('https://dcbg.win/profile', { credentials: 'include' })
           .then(res => res.ok ? res.json() : null)
           .then(profile => {
             console.log('[Home.js] OAuth /profile fetch result:', profile);
-  setUser(profile);
-  if (profile && profile.id) {
-    socket.emit('identify-user', profile.id);
-  }
-});
+            setUser(profile);
+            if (profile && profile.id) {
+              socket.emit('identify-user', profile.id);
+            }
+          });
       }
     }
     window.addEventListener('message', handleOAuthMessage);
