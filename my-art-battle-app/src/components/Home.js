@@ -9,6 +9,7 @@ import HowToPlayModal from "./HowToPlayModal";
 import HowToPlaySlideshow from "./HowToPlaySlideshow";
 import { openOAuthPopup } from '../utils/auth';
 import ProfileMenu from './ProfileMenu';
+import { FaInstagram, FaLinkedin, FaEnvelope } from 'react-icons/fa';
 
 export default function Home() {
   const [showHowTo, setShowHowTo] = useState(false);
@@ -133,18 +134,27 @@ export default function Home() {
       <div
         className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-[#f0efeb] via-[#cddafd] to-[#fad2e1] px-4"
       >
-        <div className="relative w-full max-w-4xl bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-0 flex flex-row items-stretch border-2 border-[#e2ece9] overflow-hidden">
+        <div className="relative w-full max-w-4xl bg-white/50 backdrop-blur-sm rounded-3xl shadow-2xl p-0 flex flex-row items-stretch border-2 border-[#e2ece9] overflow-hidden">
           {/* Left Section: Main Actions */}
-          <div className="flex-1 p-10 flex flex-col items-center space-y-6">
-            {/* Logo */}
-            <div className="w-24 h-24 rounded-full bg-[#bee1e6] flex items-center justify-center shadow-inner">
-              <span className="text-5xl select-none">🎨</span>
+          <div className="flex-1 pt-4 pb-8 px-10 flex flex-col items-center space-y-4">
+            {/* Logo Image */}
+            <div className="w-48 h-48 flex items-center justify-center mx-auto mb-1">
+              <img
+                src={require('../assets/icons/logo.png')}
+                alt="DrawCam Logo"
+                className="w-full h-full object-contain drop-shadow-lg"
+                style={{ background: 'transparent' }}
+              />
             </div>
-
-            {/* Title */}
-            <h1 className="text-4xl font-semibold title-font tracking-wide text-[var(--color-text)] text-center drop-shadow-sm">
+            <div className="-mt-1 mb-2 text-xl font-semibold fun-font text-outline text-center select-none tracking-wide">
+              A LIVE MULTIPLAYER DRAWING GAME
+            </div>
+            {/* <h1 className="text-4xl font-semibold title-font tracking-wide text-[var(--color-text)] text-center drop-shadow-sm">
               DrawCam
-            </h1>
+            </h1> */}
+            {/* <p className="text-center text-lg text-gray-500 font-medium mt-1 mb-4">
+              a new drawing experience
+            </p> */}
 
             {/* Nickname + Actions */}
             <div className="w-full space-y-4">
@@ -266,8 +276,15 @@ export default function Home() {
                 </>
               ) : (
                 <div className="flex flex-col items-center w-full">
-                  <div className="flex items-center justify-center mb-4 w-full">
-                    <span className="title-font tracking-wide text-2xl text-gray-800">Welcome, {user.username}!</span>
+                  <div className="flex flex-col items-center justify-center w-full mb-2 mt-0">
+                    <h2 className="text-2xl font-bold mb-2 text-gray-800">Profile Statistics</h2>
+                    <div className="flex items-center justify-center w-full">
+                      <span className="title-font tracking-wide text-2xl text-gray-800">Welcome, {(
+                        user.username.length > 13
+                          ? user.username.slice(0, 13) + '…'
+                          : user.username
+                      )}!</span>
+                    </div>
                   </div>
                   {/* <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
                     <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-gray-100">
@@ -297,6 +314,33 @@ export default function Home() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Bottom-right contact section */}
+      <div className="fixed bottom-4 right-4 z-50 flex items-center gap-4 px-2 py-1">
+        <span className="title-font font-bold text-base text-gray-900 tracking-wide select-none">Contact Me!</span>
+        <a
+          href="https://instagram.com/choi.daviid"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Instagram"
+        >
+          <FaInstagram className="text-[#C13584] hover:text-pink-500 text-xl transition" />
+        </a>
+        <a
+          href="https://www.linkedin.com/in/davidchoii/"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="LinkedIn"
+        >
+          <FaLinkedin className="text-[#0077B5] hover:text-blue-600 text-xl transition" />
+        </a>
+        <a
+          href="mailto:dchoi1207@gmail.com"
+          aria-label="Email"
+        >
+          <FaEnvelope className="text-[#EA4335] hover:text-red-500 text-xl transition" />
+        </a>
       </div>
 
     </>

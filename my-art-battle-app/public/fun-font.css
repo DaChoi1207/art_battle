@@ -6,6 +6,12 @@
 }
 
 .text-outline {
-  color: #fff;
-  text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+  color: #346fae;
+  text-shadow:
+    -2px -2px 0 #1b1f33,
+    2px -2px 0 #1b1f33,
+    -2px 2px 0 #1b1f33,
+    2px 2px 0 #1b1f33,
+    0 0 2px #000;
 }
+

@@ -72,7 +72,7 @@ export default function ProfileEditModal({ user, open, onClose, onSave }) {
               onChange={e => setUsername(e.target.value)}
               placeholder="Username"
               className="w-full px-5 py-3 rounded-full border-2 border-[#e2ece9] focus:border-[#bfc9d1] bg-white text-lg font-semibold text-gray-800 shadow-sm focus:ring-2 focus:ring-[#e2ece9]/30 transition-all title-font tracking-wide"
-              maxLength={20}
+              maxLength={25}
               required
               autoFocus
             />
