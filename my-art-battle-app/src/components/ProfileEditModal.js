@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 
+import useClickSfx from '../utils/useClickSfx';
+
 export default function ProfileEditModal({ user, open, onClose, onSave }) {
   const [username, setUsername] = useState(user?.username || '');
   const [profilePic, setProfilePic] = useState(user?.profile_pic || '');
@@ -23,12 +25,13 @@ export default function ProfileEditModal({ user, open, onClose, onSave }) {
     onSave({ username, profile_pic: profilePic });
   };
 
+  const playClick = useClickSfx();
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-[#f0efeb] via-[#cddafd] to-[#fad2e1] backdrop-blur-sm">
       <div className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl px-8 py-10 flex flex-col gap-6 min-w-[340px] max-w-[92vw] relative border-2 border-[#e2ece9]">
         <button
-          onClick={onClose}
+          onClick={(e) => { playClick(); onClose(e); }}
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl font-bold focus:outline-none"
           aria-label="Close"
         >
@@ -80,13 +83,14 @@ export default function ProfileEditModal({ user, open, onClose, onSave }) {
           <div className="flex gap-3 mt-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={(e) => { playClick(); onClose(e); }}
               className="flex-1 px-4 py-2 rounded-full bg-gradient-to-r from-[#fde2e4] via-[#fad2e1] to-[#fff1e6] text-gray-700 font-semibold border border-[#eae4e9] shadow-lg hover:shadow-2xl hover:from-[#fad2e1] hover:via-[#fff1e6] hover:to-[#e2ece9] transition"
             >
               Cancel
             </button>
             <button
               type="submit"
+              onClick={playClick}
               className="flex-1 px-4 py-2 rounded-full bg-gradient-to-r from-[#cddafd] via-[#dfe7fd] to-[#bee1e6] text-gray-800 font-bold shadow-lg border-2 border-[#e2ece9] hover:from-[#bee1e6] hover:via-[#f0efeb] hover:to-[#fad2e1] transition"
             >
               Save Changes

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import socket from '../socket';
+import useClickSfx from '../utils/useClickSfx';
 
 const PALETTE = [
   '#e63946', '#457b9d', '#f1faee', '#ffbe0b', '#8338ec', '#cddafd', '#bee1e6', '#b8c1ec'
@@ -50,6 +51,8 @@ export default function GalleryVoting(props) {
   const location = useLocation();
   const { id : lobbyId } = useParams();
   const navigate = useNavigate();
+  const playClick = useClickSfx();
+
 
   // Try to get from props, else from location.state
   const artworks = props.artworks || location.state?.artworks || {};
@@ -262,7 +265,7 @@ export default function GalleryVoting(props) {
         <button
           className="mt-2 px-10 py-3 rounded-full bg-gradient-to-r from-[#cddafd] via-[#bee1e6] to-[#fad2e1] title-font text-[#5b5f97] font-extrabold text-xl shadow hover:scale-105 hover:shadow-xl border-2 border-[#e2ece9] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={!ratings[playerId] || submitting}
-          onClick={handleSubmit}
+          onClick={e => { playClick(); handleSubmit() }}
         >
           Submit Rating
         </button>

@@ -10,6 +10,9 @@ import HowToPlaySlideshow from "./HowToPlaySlideshow";
 import { openOAuthPopup } from '../utils/auth';
 import ProfileMenu from './ProfileMenu';
 import { FaInstagram, FaLinkedin, FaEnvelope } from 'react-icons/fa';
+import SfxSettings from './SfxSettings';
+
+import useClickSfx from '../utils/useClickSfx';
 
 export default function Home() {
   const [showHowTo, setShowHowTo] = useState(false);
@@ -20,6 +23,7 @@ export default function Home() {
 
   const [toast, setToast] = useState({ show: false, message: '' });
   const showToast = (message) => setToast({ show: true, message });
+  const playClick = useClickSfx();
 
   // Check authentication on mount
   useEffect(() => {
@@ -126,6 +130,9 @@ export default function Home() {
         icon={toast.message ? <FcHighPriority /> : null}
       />
       <HowToPlayModal open={showHowTo} onClose={() => setShowHowTo(false)} />
+      {/* SFX Settings floating in top-left */}
+      <SfxSettings />
+
       {/* ProfileMenu floating in top-right */}
       <div style={{ position: 'absolute', top: 20, right: 24, zIndex: 50 }}>
         <ProfileMenu user={user} onLogout={handleLogout} onProfileUpdate={setUser} />
@@ -175,7 +182,7 @@ export default function Home() {
                 maxLength={18}
               />
               <button
-                onClick={create}
+                onClick={e => { playClick(); create(e); }}
                 className="
                   w-full
                   bg-gradient-to-r from-[#cddafd] via-[#dfe7fd] to-[#bee1e6]
@@ -192,7 +199,7 @@ export default function Home() {
                 Create Lobby
               </button>
               <button
-                onClick={joinPublic}
+                onClick={e => { playClick(); joinPublic(e); }}
                 className="
                   w-full
                   bg-gradient-to-r from-[#fde2e4] via-[#fad2e1] to-[#fff1e6]
@@ -228,7 +235,7 @@ export default function Home() {
                 "
               />
               <button
-                onClick={join}
+                onClick={e => { playClick(); join(e); }}
                 className="
                   bg-gradient-to-r from-[#fde2e4] via-[#fad2e1] to-[#fff1e6]
                   text-[var(--color-text)] font-semibold
@@ -259,13 +266,13 @@ export default function Home() {
                 <>
                   <h2 className="text-2xl font-bold mb-6 text-gray-800">Authenticate</h2>
                   <button
-                    onClick={() => handleLogin('google')}
+                    onClick={e => { playClick(); handleLogin('google'); }}
                     className="w-full px-4 py-3 rounded-full bg-gradient-to-r from-blue-100 via-pink-100 to-purple-100 text-blue-900 font-semibold text-lg mb-4 border border-blue-200 flex items-center justify-center gap-2 hover:scale-105 hover:shadow-lg transition-transform duration-150"
                   >
                     <GoogleIcon className="w-5 h-5 relative top-[1px]" /> Login with Google
                   </button>
                   <button
-                    onClick={() => handleLogin('discord')}
+                    onClick={e => { playClick(); handleLogin('discord'); }}
                     className="w-full px-4 py-3 rounded-full bg-gradient-to-r from-blue-100 via-pink-100 to-purple-100 text-indigo-900 font-semibold text-lg border border-blue-200 flex items-center justify-center gap-2 hover:scale-105 hover:shadow-lg transition-transform duration-150"
                   >
                     <DiscordIcon className="w-5 h-5 relative top-[1px]" /> Login with Discord

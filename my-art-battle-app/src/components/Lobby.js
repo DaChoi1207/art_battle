@@ -6,6 +6,10 @@ import { AiOutlineQuestionCircle } from 'react-icons/ai';
 import HowToPlayModal from './HowToPlayModal';
 import VoiceChat from './VoiceChat';
 import { FcCheckmark } from "react-icons/fc";
+import SfxSettings from './SfxSettings';
+
+import useClickSfx from '../utils/useClickSfx';
+
 
 function Lobby() {
   const [showHowTo, setShowHowTo] = useState(false);
@@ -23,6 +27,7 @@ function Lobby() {
   const nickname = (typeof window !== 'undefined' && window.history.state && window.history.state.usr && window.history.state.usr.nickname) || '';
   const [webcamEnabled, setWebcamEnabled] = useState(false);
   const webcamFrames = useRef({});
+  const playClick = useClickSfx();
 
   useEffect(() => {
     setLoading(true);
@@ -118,7 +123,7 @@ function Lobby() {
               <VoiceChat roomId={id} />
               <div className="title-font text-base mt-2 text-[var(--color-text)]">{player.nickname || player.id}</div>
               {player.id === socket.id && (
-                <button className="mt-2 px-3 py-1 rounded-full bg-gradient-to-r from-[#cddafd] via-[#bee1e6] to-[#fad2e1] text-[var(--color-text)] text-xs font-semibold shadow hover:from-[#fad2e1] hover:to-[#bee1e6] transition" onClick={() => setWebcamEnabled(e => !e)}>
+                <button className="mt-2 px-3 py-1 rounded-full bg-gradient-to-r from-[#cddafd] via-[#bee1e6] to-[#fad2e1] text-[var(--color-text)] text-xs font-semibold shadow hover:from-[#fad2e1] hover:to-[#bee1e6] transition" onClick={e => { playClick(); setWebcamEnabled(v => !v); }}>
                   {webcamEnabled ? 'Turn Off Camera' : 'Turn On Camera'}
                 </button>
               )}
@@ -234,6 +239,7 @@ function Lobby() {
             <button
               className="px-4 py-2 rounded-full bg-gradient-to-r from-[#fad2e1] via-[#fff1e6] to-[#bee1e6] text-[var(--color-text)] font-semibold shadow hover:from-[#bee1e6] hover:to-[#fad2e1] transition"
               onClick={async () => {
+                playClick();
                 await navigator.clipboard.writeText(window.location.origin + '/lobby/' + id);
                 setCopyMsg('Link copied!');
                 setTimeout(() => setCopyMsg(''), 1500);
@@ -243,6 +249,7 @@ function Lobby() {
             </button>
             <button
               onClick={() => {
+                playClick();
                 const durationNum = Number(roundDuration);
                 if (!durationNum || durationNum < 5 || durationNum > 1200) {
                   return;

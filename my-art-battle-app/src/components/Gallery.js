@@ -5,6 +5,7 @@ import socket from '../socket';
 import '../styles/heart-animation.css';
 import VoiceChat from './VoiceChat';
 //import { updateStats } from '../utils/stats';
+import useClickSfx from '../utils/useClickSfx';
 
 const PALETTE = [
   '#e63946', '#457b9d', '#f1faee', '#ffbe0b',
@@ -17,6 +18,7 @@ function getRandomPaletteColor(idx) {
 
 
 export default function Gallery() {
+  const playClick = useClickSfx();
   const { id } = useParams();
   const navigate = useNavigate();
   const {
@@ -219,14 +221,14 @@ export default function Gallery() {
         {isHost && (
           <button
             className="px-10 py-4 rounded-full bg-gradient-to-r from-[#cddafd] via-[#bee1e6] to-[#fad2e1] text-[#5b5f97] font-extrabold text-2xl shadow-lg hover:scale-105 hover:shadow-xl border-2 border-[#e2ece9] transition-all duration-150 title-font"
-            onClick={handlePlayAgain}
+            onClick={e => { playClick(); handlePlayAgain() }}
           >
             Play Again
           </button>
         )}
         <button
           className="px-10 py-4 rounded-full bg-gradient-to-r from-[#cddafd] via-[#bee1e6] to-[#fad2e1] text-[#5b5f97] font-extrabold text-2xl shadow-lg hover:scale-105 hover:shadow-xl border-2 border-[#e2ece9] transition-all duration-150 title-font"
-          onClick={() => navigate('/')}
+          onClick={e => { playClick(); navigate('/') }}
         >
           Home
         </button>
