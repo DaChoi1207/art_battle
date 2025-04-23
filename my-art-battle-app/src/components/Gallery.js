@@ -218,20 +218,32 @@ export default function Gallery() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-8 mt-16 w-full max-w-lg justify-center items-center">
-        {isHost && (
-          <button
-            className="px-10 py-4 rounded-full bg-gradient-to-r from-[#cddafd] via-[#bee1e6] to-[#fad2e1] text-[#5b5f97] font-extrabold text-2xl shadow-lg hover:scale-105 hover:shadow-xl border-2 border-[#e2ece9] transition-all duration-150 title-font"
-            onClick={e => { playClick(); handlePlayAgain() }}
-          >
-            Play Again
-          </button>
+        {isHost ? (
+          <>
+            <button
+              className="px-10 py-4 rounded-full bg-gradient-to-r from-[#cddafd] via-[#bee1e6] to-[#fad2e1] text-[#5b5f97] font-extrabold text-2xl shadow-lg hover:scale-105 hover:shadow-xl border-2 border-[#e2ece9] transition-all duration-150 title-font"
+              onClick={e => { playClick(); handlePlayAgain() }}
+            >
+              Play Again
+            </button>
+            <button
+              className="px-10 py-4 rounded-full bg-gradient-to-r from-[#cddafd] via-[#bee1e6] to-[#fad2e1] text-[#5b5f97] font-extrabold text-2xl shadow-lg hover:scale-105 hover:shadow-xl border-2 border-[#e2ece9] transition-all duration-150 title-font"
+              onClick={e => { playClick(); navigate('/') }}
+            >
+              Home
+            </button>
+          </>
+        ) : (
+          <div className="flex flex-col gap-4 w-full items-center">
+            <div className="text-xl text-[#a685e2] font-bold title-font text-center w-full">Wait for the host to start game again!</div>
+            <button
+              className="px-10 py-4 rounded-full bg-gradient-to-r from-[#cddafd] via-[#bee1e6] to-[#fad2e1] text-[#5b5f97] font-extrabold text-2xl shadow-lg hover:scale-105 hover:shadow-xl border-2 border-[#e2ece9] transition-all duration-150 title-font"
+              onClick={e => { playClick(); navigate('/') }}
+            >
+              Home
+            </button>
+          </div>
         )}
-        <button
-          className="px-10 py-4 rounded-full bg-gradient-to-r from-[#cddafd] via-[#bee1e6] to-[#fad2e1] text-[#5b5f97] font-extrabold text-2xl shadow-lg hover:scale-105 hover:shadow-xl border-2 border-[#e2ece9] transition-all duration-150 title-font"
-          onClick={e => { playClick(); navigate('/') }}
-        >
-          Home
-        </button>
       </div>
     </div>
   );
