@@ -10,6 +10,7 @@ export function openOAuthPopup(provider, onSuccess) {
     `width=${width},height=${height},left=${left},top=${top}`
   );
   window.addEventListener('message', function handler(e) {
+    // Accept from your backend's origin and localhost for dev
     const allowedOrigins = [process.env.REACT_APP_API_URL, 'http://localhost:3000'];
     if (allowedOrigins.includes(e.origin) && e.data === 'oauth-success') {
       onSuccess();
@@ -25,12 +26,11 @@ export function openOAuthPopup(provider, onSuccess) {
       } catch (err) {
         // ignore if socket import fails
       }
-      if (window.opener) {
-        const origin = window.opener.location.origin || window.location.origin;
-        window.opener.postMessage('oauth-success', origin);
-        window.opener.location.reload();
-      }
-      window.close();
+      window.removeEventListener('message', handler);
     }
   });
+
+  // In the popup, after successful OAuth:
+  // window.opener.postMessage('oauth-success', window.opener.location.origin);
+  // window.close();
 }

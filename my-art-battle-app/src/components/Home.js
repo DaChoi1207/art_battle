@@ -39,7 +39,7 @@ export default function Home() {
     // Listen for OAuth success message from popup
     function handleOAuthMessage(e) {
       // Only accept messages from your backend origin in production
-      if (e.origin === process.env.REACT_APP_API_URL && e.data === "oauth-success") {
+      if (e.data === 'oauth-success') {
         fetch(`${process.env.REACT_APP_API_URL}/profile`, { credentials: 'include' })
           .then(res => res.ok ? res.json() : null)
           .then(profile => {
@@ -49,6 +49,7 @@ export default function Home() {
               socket.emit('identify-user', profile.id);
             }
           });
+        window.location.reload();
       }
     }
     window.addEventListener('message', handleOAuthMessage);
@@ -57,7 +58,8 @@ export default function Home() {
 
   const handleLogin = (provider) => {
     openOAuthPopup(provider, () => {
-      fetch(`${process.env.REACT_APP_API_URL}/profile`, { credentials: 'include' }).then(res => res.ok ? res.json() : null)
+      fetch(`${process.env.REACT_APP_API_URL}/profile`, { credentials: 'include' })
+        .then(res => res.ok ? res.json() : null)
         .then(profile => {
           setUser(profile);
           if (profile && profile.id) {
@@ -68,7 +70,7 @@ export default function Home() {
   };
 
   const handleLogout = () => {
-    fetch(`${process.env.REACT_APP_API_URL}/logout`, { credentials: 'include' })
+    fetch('https://dcbg.win/logout', { credentials: 'include' })
       .then(() => setUser(null));
   };
 

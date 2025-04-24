@@ -10,13 +10,22 @@ const app = express(); // <-- Initialize app before using it
 app.set('trust proxy', 1);
 
 // CORS setup for frontend (React on localhost:3000)
+// const cors = require('cors');
+// const allowedOrigins = process.env.CLIENT_ORIGIN.split(',').map(origin => origin.trim());
+// app.use(cors({
+//   origin: allowedOrigins,
+//   credentials: true
+// }));
+
 const cors = require('cors');
-const allowedOrigins = process.env.CLIENT_ORIGIN.split(',');
 app.use(cors({
-  origin: allowedOrigins,
+  origin: [
+    'https://dcbg.win',
+    'https://d3jmnopgl2vwc8.cloudfront.net',
+    'https://app.dcbg.win',
+  ],
   credentials: true
 }));
-
 
 const isProd = process.env.NODE_ENV === 'production';
 const baseUrl = process.env.BASE_URL;
@@ -29,24 +38,24 @@ const pgSession = require('connect-pg-simple')(session);
 const { Pool } = require('pg');
 
 //PRODUCTION POOL
-// const pool = new Pool({
-//   connectionString: process.env.DATABASE_URL,
-//   ssl: {
-//     rejectUnauthorized: false // Needed for AWS RDS by default
-//   }
-// });
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false // Needed for AWS RDS by default
+  }
+});
 
 //DEVELOPMENT POOL
-const pool = new Pool(
-  isProd
-    ? {
-        connectionString: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false }
-      }
-    : {
-        connectionString: process.env.DATABASE_URL
-      }
-);
+// const pool = new Pool(
+//   isProd
+//     ? {
+//         connectionString: process.env.DATABASE_URL,
+//         ssl: { rejectUnauthorized: false }
+//       }
+//     : {
+//         connectionString: process.env.DATABASE_URL
+//       }
+// );
 
 // Add this route anywhere after your app is defined:
 app.get('/db-test', async (req, res) => {
@@ -75,8 +84,8 @@ const sessionMiddleware = session({
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    secure: isProd, // true in production
-    sameSite: isProd ? 'none' : 'lax', // 'none' for cross-site cookies in prod
+    secure: true, // true in production, isProd in development
+    sameSite: 'none'
   }
 });
 // use it for Express
@@ -201,7 +210,7 @@ app.get('/auth/google/callback', (req, res, next) => {
     // For popup-based login: notify opener and close window
     res.send(`
       <script>
-        window.opener.postMessage('oauth-success', '${clientOrigin}');
+        window.opener.postMessage('oauth-success', 'https://app.dcbg.win');
         window.close();
       </script>
     `);
@@ -220,7 +229,7 @@ app.get('/auth/discord/callback',
     // For popup-based login: notify opener and close window
     res.send(`
       <script>
-        window.opener.postMessage('oauth-success', '${clientOrigin}');
+window.opener.postMessage('oauth-success','https://app.dcbg.win');
         window.close();
       </script>
     `);
@@ -272,12 +281,27 @@ pool.query('SELECT NOW()', (err, res) => {
 });
 
 const server = http.createServer(app);
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_ORIGIN.split(','),
+    origin: 'https://app.dcbg.win', // React dev server
     credentials: true
   }
 });
+
+// const io = new Server(server, {
+//   cors: {
+//     origin: function(origin, callback) {
+//       // Allow requests with no origin (like Postman)
+//       if (!origin) return callback(null, true);
+//       if (allowedOrigins.includes(origin)) {
+//         return callback(null, true);
+//       }
+//       return callback(new Error('Not allowed by CORS'));
+//     },
+//     credentials: true
+//   }
+// });
 
 // and reuse the same instance for Socket.IO
 io.use((socket, next) => {
