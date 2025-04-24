@@ -26,18 +26,19 @@ export default function SfxSettings() {
         <FaCog className="text-2xl text-gray-700" />
       </button>
       {open && (
-        <div className="mt-2 p-4 bg-white/95 rounded-2xl shadow-2xl border border-[#e2ece9] flex flex-col items-center min-w-[200px] animate-fade-in">
-          <span className="font-semibold mb-2 text-gray-800">SFX Volume</span>
+        <div className="mt-2 p-6 bg-gradient-to-br from-[#a2d2ff]/90 via-[#fad2e1]/90 to-[#cdb4db]/90 rounded-3xl shadow-2xl border-2 border-[#a2d2ff] flex flex-col items-center min-w-[220px] animate-fade-in">
+          <span className="mb-3 text-lg text-[#22223b] title-font tracking-wide">SFX Volume</span>
           <input
             type="range"
             min="0"
             max="100"
             value={volume}
             onChange={handleVolumeChange}
-            className="w-full accent-pink-400"
+            className="w-full accent-pink-400 h-2 rounded-lg outline-none transition-all duration-200 mb-2"
             aria-label="SFX Volume"
+            style={{ background: 'linear-gradient(90deg, #a2d2ff 60%, #ffafcc 100%)' }}
           />
-          <span className="mt-1 text-xs text-gray-500">{volume}%</span>
+          <span className="mt-1 text-sm text-[#6c757d] fun-font bg-white/60 px-3 py-1 rounded-full shadow">{volume}%</span>
         </div>
       )}
     </div>
