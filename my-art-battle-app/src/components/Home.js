@@ -17,12 +17,14 @@ import useClickSfx from '../utils/useClickSfx';
 export default function Home() {
   const audioRef = useRef(null);
 
+  const [musicStarted, setMusicStarted] = useState(false);
+  const [musicPlaying, setMusicPlaying] = useState(false);
+  
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.loop = true;
       const savedVol = localStorage.getItem('musicVolume');
       audioRef.current.volume = savedVol !== null ? Number(savedVol) / 100 : 0.5;
-      audioRef.current.play().catch(() => {});
     }
     // Listen for music volume changes
     const handler = e => {
@@ -31,26 +33,44 @@ export default function Home() {
       }
     };
     window.addEventListener('music-volume-change', handler);
-
-    // Try to play music on any user interaction if autoplay fails
-    const resumeMusic = () => {
-      if (audioRef.current && audioRef.current.paused) {
-        audioRef.current.play().catch(() => {});
-      }
-    };
-    window.addEventListener('click', resumeMusic);
-    window.addEventListener('keydown', resumeMusic);
-    window.addEventListener('touchstart', resumeMusic);
-
     return () => {
       window.removeEventListener('music-volume-change', handler);
-      window.removeEventListener('click', resumeMusic);
-      window.removeEventListener('keydown', resumeMusic);
-      window.removeEventListener('touchstart', resumeMusic);
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
       }
+    };
+  }, []);
+
+  const startMusic = () => {
+    if (audioRef.current) {
+      audioRef.current.play()
+        .then(() => {
+          setMusicStarted(true);
+          setMusicPlaying(true);
+        })
+        .catch(() => {});
+    }
+  };
+
+  const pauseMusic = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      setMusicPlaying(false);
+    }
+  };
+
+  // Keep track if user pauses/resumes via native controls (if ever exposed)
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const onPlay = () => { setMusicPlaying(true); setMusicStarted(true); };
+    const onPause = () => setMusicPlaying(false);
+    audio.addEventListener('play', onPlay);
+    audio.addEventListener('pause', onPause);
+    return () => {
+      audio.removeEventListener('play', onPlay);
+      audio.removeEventListener('pause', onPause);
     };
   }, []);
   const [showHowTo, setShowHowTo] = useState(false);
@@ -163,7 +183,119 @@ export default function Home() {
 
   return (
     <>
-      <audio ref={audioRef} src="/drawcam.mp3" />
+      <audio ref={audioRef} src="/drawcam.mp3" preload="auto" />
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 24,
+          left: 24,
+          zIndex: 60,
+          minWidth: 0,
+          display: 'flex',
+          alignItems: 'center',
+          pointerEvents: 'none',
+        }}
+      >
+        <div style={{ pointerEvents: 'auto', width: 'auto', minWidth: 0 }}>
+          {/* Fade in/out with opacity and scale for smoothness */}
+          <div
+            style={{
+              transition: 'opacity 0.35s, transform 0.35s',
+              opacity: !musicStarted ? 1 : 0,
+              transform: !musicStarted ? 'scale(1)' : 'scale(0.95)',
+              position: 'absolute',
+              left: 0,
+              bottom: 0,
+              width: 'auto',
+              pointerEvents: !musicStarted ? 'auto' : 'none',
+            }}
+          >
+            <button
+              onClick={startMusic}
+              style={{
+                padding: '0.4rem 1.2rem',
+                borderRadius: '9999px',
+                background: 'linear-gradient(90deg, #fad2e1 0%, #cddafd 100%)',
+                color: '#22223b',
+                fontFamily: 'var(--font-fun), sans-serif',
+                fontWeight: 700,
+                fontSize: '1rem',
+                boxShadow: '0 1px 6px #0001',
+                border: '2px solid #e2ece9',
+                transition: 'background 0.2s, box-shadow 0.2s',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                minWidth: 0,
+              }}
+              className="fun-font hover:shadow-xl hover:bg-white/90 focus:outline-none"
+            >
+              ▶ Play Music
+            </button>
+          </div>
+          {/* Playing state with fade in/out */}
+          <div
+            style={{
+              transition: 'opacity 0.35s, transform 0.35s',
+              opacity: musicStarted ? 1 : 0,
+              transform: musicStarted ? 'scale(1)' : 'scale(0.95)',
+              position: 'absolute',
+              left: 0,
+              bottom: 0,
+              width: 'auto',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              pointerEvents: musicStarted ? 'auto' : 'none',
+            }}
+          >
+            <span
+              style={{
+                background: 'linear-gradient(90deg, #cddafd 0%, #fad2e1 100%)',
+                color: '#22223b',
+                fontFamily: 'var(--font-fun), sans-serif',
+                fontWeight: 700,
+                fontSize: '1rem',
+                borderRadius: '9999px',
+                padding: '0.4rem 1.1rem',
+                boxShadow: '0 1px 6px #0001',
+                border: '2px solid #e2ece9',
+                marginRight: 6,
+                userSelect: 'none',
+                minWidth: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                whiteSpace: 'nowrap',
+              }}
+              className="fun-font"
+            >
+              {musicPlaying ? <><span style={{fontSize:'1.1em'}}>🎵</span><span>Playing</span></> : <><span style={{fontSize:'1.1em'}}>⏸</span><span>Paused</span></>}
+            </span>
+            <button
+              onClick={musicPlaying ? pauseMusic : startMusic}
+              style={{
+                padding: '0.4rem 1.1rem',
+                borderRadius: '9999px',
+                background: musicPlaying
+                  ? 'linear-gradient(90deg, #fad2e1 0%, #cddafd 100%)'
+                  : 'linear-gradient(90deg, #cddafd 0%, #fad2e1 100%)',
+                color: '#22223b',
+                fontFamily: 'var(--font-fun), sans-serif',
+                fontWeight: 700,
+                fontSize: '1rem',
+                boxShadow: '0 1px 6px #0001',
+                border: '2px solid #e2ece9',
+                transition: 'background 0.2s, box-shadow 0.2s',
+                cursor: 'pointer',
+                minWidth: 0,
+              }}
+              className="fun-font hover:shadow-xl hover:bg-white/90 focus:outline-none"
+            >
+              {musicPlaying ? 'Pause' : 'Play'}
+            </button>
+          </div>
+        </div>
+      </div>
       <Toast
         message={toast.message}
         show={toast.show}

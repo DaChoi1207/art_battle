@@ -5,7 +5,7 @@ import { FaCog } from 'react-icons/fa';
 export default function SfxSettings() {
   const [musicVolume, setMusicVolume] = useState(() => {
     const saved = localStorage.getItem('musicVolume');
-    return saved !== null ? Number(saved) : 50;
+    return saved !== null ? Number(saved) : 100;
   });
   const [open, setOpen] = useState(false);
   const [volume, setVolume] = useState(() => {
