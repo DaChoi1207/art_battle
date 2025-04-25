@@ -49,3 +49,9 @@ Thumbs.db
 
 # Test vs Prod
 my-art-battle-app/test-vs-prod.txt
+
+# Audio
+my-art-battle-app/public/*.mp3
+
+# Server
+server-local.js

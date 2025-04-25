@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import socket from '../socket';
 import Toast from './Toast';
@@ -15,6 +15,44 @@ import SfxSettings from './SfxSettings';
 import useClickSfx from '../utils/useClickSfx';
 
 export default function Home() {
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.loop = true;
+      const savedVol = localStorage.getItem('musicVolume');
+      audioRef.current.volume = savedVol !== null ? Number(savedVol) / 100 : 0.5;
+      audioRef.current.play().catch(() => {});
+    }
+    // Listen for music volume changes
+    const handler = e => {
+      if (audioRef.current) {
+        audioRef.current.volume = Number(e.detail) / 100;
+      }
+    };
+    window.addEventListener('music-volume-change', handler);
+
+    // Try to play music on any user interaction if autoplay fails
+    const resumeMusic = () => {
+      if (audioRef.current && audioRef.current.paused) {
+        audioRef.current.play().catch(() => {});
+      }
+    };
+    window.addEventListener('click', resumeMusic);
+    window.addEventListener('keydown', resumeMusic);
+    window.addEventListener('touchstart', resumeMusic);
+
+    return () => {
+      window.removeEventListener('music-volume-change', handler);
+      window.removeEventListener('click', resumeMusic);
+      window.removeEventListener('keydown', resumeMusic);
+      window.removeEventListener('touchstart', resumeMusic);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+    };
+  }, []);
   const [showHowTo, setShowHowTo] = useState(false);
   const [code, setCode] = useState('');
   const [nickname, setNickname] = useState('');
@@ -125,6 +163,7 @@ export default function Home() {
 
   return (
     <>
+      <audio ref={audioRef} src="/drawcam.mp3" />
       <Toast
         message={toast.message}
         show={toast.show}
