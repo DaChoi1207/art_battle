@@ -28,7 +28,7 @@ export default function Home() {
     if (audioRef.current) {
       audioRef.current.loop = true;
       const savedVol = localStorage.getItem('musicVolume');
-      audioRef.current.volume = savedVol !== null ? Number(savedVol) / 100 : 0.5;
+      audioRef.current.volume = savedVol !== null ? Number(savedVol) / 100 : 1.0;
     }
     // Listen for music volume changes
     const handler = e => {

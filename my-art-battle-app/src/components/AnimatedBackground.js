@@ -38,8 +38,8 @@ export default function AnimatedBackground() {
         x: Math.random() * width,
         y: Math.random() * height,
         r: 64 + Math.random() * 52, // bigger
-        dx: (Math.random() - 0.5) * 0.25,
-        dy: (Math.random() - 0.5) * 0.25,
+        dx: (Math.random() - 0.5) * 0.55,
+        dy: (Math.random() - 0.5) * 0.55,
         baseAlpha: 0.32 + Math.random() * 0.10, // more visible
         color,
         pulseSeed: Math.random() * 1000,
