@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import AnimatedBackground from './AnimatedBackground';
 import { useNavigate } from 'react-router-dom';
 import socket from '../socket';
 import Toast from './Toast';
@@ -15,6 +16,9 @@ import SfxSettings from './SfxSettings';
 import useClickSfx from '../utils/useClickSfx';
 
 export default function Home() {
+  // Animated background appears behind everything
+  // ...rest of Home code
+
   const audioRef = useRef(null);
 
   const [musicStarted, setMusicStarted] = useState(false);
@@ -183,6 +187,7 @@ export default function Home() {
 
   return (
     <>
+      <AnimatedBackground />
       <audio ref={audioRef} src="/drawcam.mp3" preload="auto" />
       <div
         style={{
