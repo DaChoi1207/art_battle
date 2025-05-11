@@ -55,3 +55,11 @@ my-art-battle-app/public/*.mp3
 
 # Server
 server-local.js
+
+# Early Test Files
+api_server.py
+drawing_save.png
+drawing.py
+hand_detection.py
+main.py
+.env_template
