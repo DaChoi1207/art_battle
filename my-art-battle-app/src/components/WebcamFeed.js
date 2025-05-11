@@ -419,7 +419,9 @@ useEffect(() => {
         if (shouldClearCanvas) {
           drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
           lastDrawingPosRef.current = null;
-          socket.emit('clear-canvas', roomId);
+          // Notify server to clear my drawing state and notify peers
+          socket.emit('clear-my-drawing', roomId);
+        
         } else if (isColorChangeActive && rightHandGesture) {
           // Map gestures to palette slots 0-4
           let idx = 0;
@@ -621,6 +623,15 @@ useEffect(() => {
           // e.g., remoteDrawingData[peerId] = [];
         });
       }
+    });
+
+    // Listen for a peer clearing their canvas and clear their remote overlay
+    socket.on('peer-cleared-canvas', (peerId) => {
+      if (remoteCanvasesRef.current && remoteCanvasesRef.current[peerId]) {
+        const ctx = remoteCanvasesRef.current[peerId].getContext('2d');
+        ctx.clearRect(0, 0, remoteCanvasesRef.current[peerId].width, remoteCanvasesRef.current[peerId].height);
+      }
+      // Optionally reset any remote drawing state for that peer
     });
 
     return () => {

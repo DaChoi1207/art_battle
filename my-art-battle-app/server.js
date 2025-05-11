@@ -563,8 +563,20 @@ io.on('connection', socket => {
 
   // Also allow manual clearing if needed
   socket.on('clear-canvas', (roomId) => {
-    drawingStates[roomId] = {};
-    io.in(roomId).emit('clear-canvas');
+    if (drawingStates[roomId] && drawingStates[roomId][socket.id]) {
+      drawingStates[roomId][socket.id] = [];
+    }
+    // Only emit to the requesting socket, not the room
+    socket.emit('clear-canvas');
+  });
+
+  // New: clear only my drawing and notify peers
+  socket.on('clear-my-drawing', (roomId) => {
+    if (drawingStates[roomId] && drawingStates[roomId][socket.id]) {
+      drawingStates[roomId][socket.id] = [];
+    }
+    // Notify other clients to clear this user's drawing
+    socket.to(roomId).emit('peer-cleared-canvas', socket.id);
   });
 
   socket.on('get-prompt', lobbyId => {
